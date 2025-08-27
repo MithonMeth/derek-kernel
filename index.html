@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmokDalf &ndash; The Wisest Puff on Solana</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/images/logo128.png" />
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      /*
+        Configure a simple colour palette and fonts for our site.  The
+        colours are intentionally bold to give the page a distinctive
+        modern look.  These variables are referenced through the Tailwind
+        API in our markup.
+      */
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#FF9500', // warm orange accent
+              secondary: '#6E44FF', // vibrant purple accent
+              dark: '#0B132B', // nearly black background
+              light: '#1C2541', // dark blue for alternating sections
+            },
+            fontFamily: {
+              press: ['"Press Start 2P"', 'cursive'],
+              pop: ['Poppins', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /*
+        Additional custom styles complement the Tailwind defaults.  The
+        backdrop blur on the header is defined inline in the markup via
+        Tailwind classes, but the mobile menu uses a simple transition
+        here.  Feel free to tweak the timing or easing to taste.
+      */
+      #mobile-menu {
+        transition: max-height 0.3s ease;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body class="bg-dark text-white font-pop overflow-x-hidden scroll-smooth">
+    <!-- Navigation -->
+    <header class="fixed top-0 left-0 w-full z-50 backdrop-blur-sm bg-dark/70">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
+        <a href="#" class="flex items-center space-x-3">
+          <img
+            src="assets/images/logo128.png"
+            alt="SmokDalf logo"
+            class="h-10 w-10 rounded-full ring-2 ring-primary"
+          />
+          <span class="text-xl md:text-2xl font-bold font-press text-primary">SmokDalf</span>
+        </a>
+        <nav class="hidden md:flex space-x-8 text-sm font-semibold">
+          <a href="#about" class="hover:text-primary transition-colors">About</a>
+          <a href="#features" class="hover:text-primary transition-colors">Roadmap</a>
+          <a href="#community" class="hover:text-primary transition-colors">Community</a>
+          <a href="#social" class="hover:text-primary transition-colors">Social</a>
+        </nav>
+        <button
+          id="mobile-menu-btn"
+          class="md:hidden text-primary focus:outline-none"
+          aria-label="Toggle menu"
+        >
+          <!-- Hamburger Icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+      </div>
+      <!-- Mobile navigation panel -->
+      <div
+        id="mobile-menu"
+        class="md:hidden max-h-0 bg-dark/90 backdrop-blur hidden flex-col text-center"
+      >
+        <a
+          href="#about"
+          class="block py-3 px-4 border-b border-light hover:bg-light/20"
+          >About</a
+        >
+        <a
+          href="#features"
+          class="block py-3 px-4 border-b border-light hover:bg-light/20"
+          >Roadmap</a
+        >
+        <a
+          href="#community"
+          class="block py-3 px-4 border-b border-light hover:bg-light/20"
+          >Community</a
+        >
+        <a
+          href="#social"
+          class="block py-3 px-4 hover:bg-light/20"
+          >Social</a
+        >
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section
+      id="hero"
+      class="relative h-screen flex items-center justify-center text-center"
+    >
+      <!-- Background image with slight blur and scale to give depth -->
+      <img
+        src="assets/images/hero.webp"
+        alt="SmokDalf hero"
+        class="absolute inset-0 w-full h-full object-cover object-center transform scale-110 blur-sm"
+      />
+      <!-- Overlay to darken the background for better text readability -->
+      <div class="absolute inset-0 bg-black/60"></div>
+      <div class="relative z-10 max-w-2xl px-6">
+        <h1
+          class="text-5xl md:text-7xl font-extrabold font-press text-primary drop-shadow-lg"
+        >
+          SmokDalf
+        </h1>
+        <p
+          class="mt-4 text-lg md:text-2xl text-gray-300 italic tracking-wide"
+        >
+          The Wisest Puff on Solana
+        </p>
+        <p
+          class="mt-6 text-gray-400 max-w-lg mx-auto leading-relaxed"
+        >
+          $SmokDalf is the wizard’s puff of destiny. No presale, no team bags, no
+          taxes &mdash; just pure meme magic on Solana. The pipe is lit, the
+          vibes are strong, and the fellowship is community‑owned.
+        </p>
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="#community"
+            class="inline-block bg-primary text-dark font-semibold px-6 py-3 rounded-full shadow hover:bg-orange-600 transition-colors"
+            >Join the Fellowship</a
+          >
+          <a
+            href="https://x.com/SmokingGandalf_"
+            class="inline-block border border-primary font-semibold px-6 py-3 rounded-full text-primary hover:bg-primary hover:text-dark transition-colors"
+            >Follow on X</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section
+      id="about"
+      class="py-20 bg-light pt-28 scroll-mt-28"
+    >
+      <div class="max-w-6xl mx-auto px-4 text-center">
+        <h2 class="text-4xl font-bold font-press text-primary mb-6">About
+          <span class="text-secondary">$SmokDalf</span></h2>
+        <p class="text-gray-300 max-w-4xl mx-auto leading-relaxed">
+          $SmokDalf stands for lore, laughter and fairness.  Our wizard
+          travels light &mdash; no presale, no taxes, no hidden team bags.
+          The only magic here is the strength of the community and the
+          memes we conjure together.
+        </p>
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <!-- Meme Magic -->
+          <div class="p-8 bg-dark rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+            <!-- Magic wand icon -->
+            <div class="flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 576 512"
+                class="h-12 w-12 text-primary"
+                fill="currentColor"
+              >
+                <path
+                  d="M234.7 42.7L197 56.8c-3 1.1-5 4-5 7.2s2 6.1 5 7.2l37.7 14.1L248.8 123c1.1 3 4 5 7.2 5s6.1-2 7.2-5l14.1-37.7L315 71.2c3-1.1 5-4 5-7.2s-2-6.1-5-7.2L277.3 42.7 263.2 5c-1.1-3-4-5-7.2-5s-6.1 2-7.2 5L234.7 42.7zM46.1 395.4c-18.7 18.7-18.7 49.1 0 67.9l34.6 34.6c18.7 18.7 49.1 18.7 67.9 0L529.9 116.5c18.7-18.7 18.7-49.1 0-67.9L495.3 14.1c-18.7-18.7-49.1-18.7-67.9 0L46.1 395.4zM484.6 82.6l-105 105-23.3-23.3 105-105 23.3 23.3zM7.5 117.2C3 118.9 0 123.2 0 128s3 9.1 7.5 10.8L64 160l21.2 56.5c1.7 4.5 6 7.5 10.8 7.5s9.1-3 10.8-7.5L128 160l56.5-21.2c4.5-1.7 7.5-6 7.5-10.8s-3-9.1-7.5-10.8L128 96 106.8 39.5C105.1 35 100.8 32 96 32s-9.1 3-10.8 7.5L64 96 7.5 117.2zm352 256c-4.5 1.7-7.5 6-7.5 10.8s3 9.1 7.5 10.8L416 416l21.2 56.5c1.7 4.5 6 7.5 10.8 7.5s9.1-3 10.8-7.5L480 416l56.5-21.2c4.5-1.7 7.5-6 7.5-10.8s-3-9.1-7.5-10.8L480 352l-21.2-56.5c-1.7-4.5-6-7.5-10.8-7.5s-9.1 3-10.8 7.5L416 352l-56.5 21.2z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-primary mb-2 font-press">
+              Meme Magic
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Our coin is fuelled by pure meme energy. Together we create
+              art, stories and inside jokes that power $SmokDalf.
+            </p>
+          </div>
+          <!-- Fair Launch -->
+          <div class="p-8 bg-dark rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+            <!-- Rocket icon -->
+            <div class="flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+                class="h-12 w-12 text-primary"
+                fill="currentColor"
+              >
+                <path
+                  d="M156.6 384.9L125.7 354c-8.5-8.5-11.5-20.8-7.7-32.2c3-8.9 7-20.5 11.8-33.8L24 288c-8.6 0-16.6-4.6-20.9-12.1s-4.2-16.7 .2-24.1l52.5-88.5c13-21.9 36.5-35.3 61.9-35.3l82.3 0c2.4-4 4.8-7.7 7.2-11.3C289.1-4.1 411.1-8.1 483.9 5.3c11.6 2.1 20.6 11.2 22.8 22.8c13.4 72.9 9.3 194.8-111.4 276.7c-3.5 2.4-7.3 4.8-11.3 7.2l0 82.3c0 25.4-13.4 49-35.3 61.9l-88.5 52.5c-7.4 4.4-16.6 4.5-24.1 .2s-12.1-12.2-12.1-20.9l0-107.2c-14.1 4.9-26.4 8.9-35.7 11.9c-11.2 3.6-23.4 .5-31.8-7.8zM384 168a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-primary mb-2 font-press">
+              Fair Launch
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Zero presale, 0/0 tax, all tokens circulating from day one.
+              Liquidity locked, contract renounced &mdash; no rug spells
+              here.
+            </p>
+          </div>
+          <!-- Community First -->
+          <div class="p-8 bg-dark rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+            <!-- Users icon -->
+            <div class="flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 640 512"
+                class="h-12 w-12 text-primary"
+                fill="currentColor"
+              >
+                <path
+                  d="M144 0a80 80 0 1 1 0 160A80 80 0 1 1 144 0zM512 0a80 80 0 1 1 0 160A80 80 0 1 1 512 0zM0 298.7C0 239.8 47.8 192 106.7 192l42.7 0c15.9 0 31 3.5 44.6 9.7c-1.3 7.2-1.9 14.7-1.9 22.3c0 38.2 16.8 72.5 43.3 96c-.2 0-.4 0-.7 0L21.3 320C9.6 320 0 310.4 0 298.7zM405.3 320c-.2 0-.4 0-.7 0c26.6-23.5 43.3-57.8 43.3-96c0-7.6-.7-15-1.9-22.3c13.6-6.3 28.7-9.7 44.6-9.7l42.7 0C592.2 192 640 239.8 640 298.7c0 11.8-9.6 21.3-21.3 21.3l-213.3 0zM224 224a96 96 0 1 1 192 0 96 96 0 1 1 -192 0zM128 485.3C128 411.7 187.7 352 261.3 352l117.3 0C452.3 352 512 411.7 512 485.3c0 14.7-11.9 26.7-26.7 26.7l-330.7 0c-14.7 0-26.7-11.9-26.7-26.7z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-primary mb-2 font-press">
+              Community First
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Our fellowship decides our fate. Proposals, memes and votes
+              shape the destiny of $SmokDalf.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Roadmap / Features Section -->
+    <section
+      id="features"
+      class="py-20 bg-dark pt-28 scroll-mt-28"
+    >
+      <div class="max-w-6xl mx-auto px-4">
+        <h2
+          class="text-4xl font-bold font-press text-primary text-center mb-12"
+        >
+          Road Ahead
+        </h2>
+        <!-- Timeline container -->
+        <div
+          class="relative grid grid-cols-1 md:grid-cols-4 gap-12 text-center"
+        >
+          <!-- Step 1 -->
+          <div class="flex flex-col items-center relative">
+            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-dark font-bold mb-4">
+              1
+            </div>
+            <h3 class="text-lg font-semibold font-press text-primary mb-2">
+              Fair Launch
+            </h3>
+            <p class="text-gray-400 text-sm max-w-xs">
+              Token is unleashed on Solana with liquidity burned and the
+              contract renounced. No presale, no team wallets, no taxes.
+            </p>
+          </div>
+          <!-- Step 2 -->
+          <div class="flex flex-col items-center relative">
+            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-dark font-bold mb-4">
+              2
+            </div>
+            <h3 class="text-lg font-semibold font-press text-primary mb-2">
+              Meme Summit
+            </h3>
+            <p class="text-gray-400 text-sm max-w-xs">
+              Host contests for memes, fan art and lore.  Reward our
+              community with honorary titles and maybe some secret swag.
+            </p>
+          </div>
+          <!-- Step 3 -->
+          <div class="flex flex-col items-center relative">
+            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-dark font-bold mb-4">
+              3
+            </div>
+            <h3 class="text-lg font-semibold font-press text-primary mb-2">
+              Fellowship Alliances
+            </h3>
+            <p class="text-gray-400 text-sm max-w-xs">
+              Collab with other Solana projects and guilds.  Spread the
+              wisdom of the wizard and combine our communities for epic
+              crossover memes.
+            </p>
+          </div>
+          <!-- Step 4 -->
+          <div class="flex flex-col items-center relative">
+            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-dark font-bold mb-4">
+              4
+            </div>
+            <h3 class="text-lg font-semibold font-press text-primary mb-2">
+              To the Stars
+            </h3>
+            <p class="text-gray-400 text-sm max-w-xs">
+              Keep building, keep laughing.  Expand our fellowship and
+              watch $SmokDalf moon when he means to.  Our journey is only
+              just beginning.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Community Section -->
+    <section
+      id="community"
+      class="py-20 bg-light pt-28 scroll-mt-28"
+    >
+      <div class="max-w-6xl mx-auto px-4 text-center">
+        <h2 class="text-4xl font-bold font-press text-primary mb-6">
+          Join the Fellowship
+        </h2>
+        <p class="text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          We are only as strong as our community.  Hop into our chats, send
+          us your dankest memes, and help the wizard puff his way to
+          freedom.  This is a project by the people, for the people &mdash;
+          and that means you.
+        </p>
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="https://x.com/SmokingGandalf_"
+            class="inline-block bg-primary text-dark font-semibold px-8 py-3 rounded-full hover:bg-orange-600 transition-colors"
+            >Follow on X</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- Social / CTA Section -->
+    <section
+      id="social"
+      class="py-20 bg-dark pt-28 scroll-mt-28 text-center"
+    >
+      <h2 class="text-3xl md:text-4xl font-bold font-press text-primary mb-4">
+        Stay Connected
+      </h2>
+      <p class="text-gray-400 max-w-xl mx-auto mb-8 leading-relaxed">
+        Keep up with the wizard’s adventures, community events and more.
+        Follow our official X account and be the first to know when
+        smokey updates drop!
+      </p>
+      <a
+        href="https://x.com/SmokingGandalf_"
+        class="inline-block bg-primary text-dark font-semibold px-10 py-3 rounded-full hover:bg-orange-600 transition-colors"
+        >Follow @SmokingGandalf_ on X</a
+      >
+    </section>
+    <footer class="py-6 bg-light text-center text-gray-500 text-sm">
+      <p>© <span id="year"></span> SmokDalf. All memes reserved.</p>
+    </footer>
+    <!-- JavaScript to handle mobile menu toggle and dynamic year -->
+    <script>
+      const btn = document.getElementById('mobile-menu-btn');
+      const menu = document.getElementById('mobile-menu');
+      btn?.addEventListener('click', () => {
+        menu.classList.toggle('hidden');
+        // toggle max height for a slide down effect on mobile
+        if (menu.classList.contains('hidden')) {
+          menu.style.maxHeight = '0px';
+        } else {
+          menu.style.maxHeight = '500px';
+        }
+      });
+      // Set current year in footer
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
