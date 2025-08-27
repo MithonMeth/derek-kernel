@@ -1,0 +1,33 @@
+# nginx.conf.erb
+worker_processes 1;
+daemon off;
+error_log stderr;
+
+events { worker_connections 1024; }
+
+http {
+  include       mime.types;
+  default_type  application/octet-stream;
+  sendfile      on;
+  tcp_nopush    on;
+  gzip          on;
+
+  server {
+    listen <%= ENV["PORT"] %>;
+    server_name _;
+
+    # Serve files from the app root
+    root <%= ENV["PWD"] %>;
+
+    location / {
+      try_files $uri /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp)$ {
+      expires max;
+      add_header Cache-Control public;
+      try_files $uri =404;
+    }
+  }
+}
