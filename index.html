@@ -27,6 +27,7 @@
       };
     </script>
     <style>
+      /* small helpers */
       #mobile-menu {
         transition: max-height 0.3s ease;
         overflow: hidden;
@@ -45,7 +46,9 @@
   </head>
   <body class="bg-dark text-white font-pop overflow-x-hidden scroll-smooth">
     <!-- Header -->
-    <header class="fixed top-0 left-0 w-full z-50 backdrop-blur-sm bg-dark/70">
+    <header
+      class="fixed top-0 left-0 w-full z-50 backdrop-blur-sm bg-dark/70 border-b border-white/5"
+    >
       <div
         class="max-w-7xl mx-auto flex justify-between items-center px-6 py-4"
       >
@@ -56,7 +59,9 @@
           <a href="#roadmap" class="hover:text-primary">Roadmap</a>
           <a href="#whitepaper" class="hover:text-primary">Whitepaper</a>
         </nav>
-        <button id="mobile-menu-btn" class="md:hidden text-primary">☰</button>
+        <button id="mobile-menu-btn" class="md:hidden text-primary text-2xl">
+          ☰
+        </button>
       </div>
       <div
         id="mobile-menu"
@@ -74,12 +79,12 @@
       id="hero"
       class="h-screen flex flex-col justify-center items-center text-center relative"
     >
-      <img
-        src="assets/images/whale-rocket.png"
-        alt="Whale Rocket"
-        class="w-48 mx-auto mb-6 animate-bounce"
-      />
-      <h1 class="text-5xl md:text-7xl font-press text-primary">GiveAF</h1>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,215,0,0.08),transparent_60%),radial-gradient(ellipse_at_bottom,rgba(30,144,255,0.08),transparent_60%)]"
+      ></div>
+      <h1 class="text-5xl md:text-7xl font-press text-primary drop-shadow">
+        GiveAF
+      </h1>
       <p class="mt-4 text-lg md:text-2xl text-gray-300 italic">
         Finally, a coin that GivesAF 🐋🚀
       </p>
@@ -87,10 +92,15 @@
         Meme energy meets real charitable impact. Every milestone fuels
         donations voted by holders. Transparent, fun, unstoppable.
       </p>
+      <a
+        href="#tokenomics"
+        class="mt-8 inline-block bg-primary text-dark px-8 py-3 rounded-full font-bold hover:bg-yellow-400 transition"
+        >Explore</a
+      >
     </section>
 
     <!-- About -->
-    <section id="about" class="py-20 bg-light text-center">
+    <section id="about" class="py-20 bg-light/60 text-center">
       <h2 class="text-4xl font-press text-primary mb-6">About $GAF</h2>
       <p class="text-gray-300 max-w-3xl mx-auto">
         GiveAF is the meme coin where whales save oceans & people. Every holder
@@ -100,10 +110,12 @@
     </section>
 
     <!-- Tokenomics -->
-    <section id="tokenomics" class="py-20 bg-dark text-center relative">
+    <section id="tokenomics" class="py-24 bg-dark text-center relative">
       <h2 class="text-4xl font-press text-primary mb-12">Tokenomics</h2>
       <div class="grid grid-cols-1 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
-        <div class="p-6 bg-light rounded-xl">
+        <div
+          class="p-6 bg-light/30 rounded-xl backdrop-blur border border-white/10"
+        >
           <svg width="120" height="120">
             <circle
               cx="60"
@@ -115,11 +127,13 @@
               class="radial-bar"
             />
           </svg>
-          <p>
+          <p class="mt-2">
             Liquidity Pool<br /><span class="text-primary font-bold">50%</span>
           </p>
         </div>
-        <div class="p-6 bg-light rounded-xl">
+        <div
+          class="p-6 bg-light/30 rounded-xl backdrop-blur border border-white/10"
+        >
           <svg width="120" height="120">
             <circle
               cx="60"
@@ -131,11 +145,13 @@
               class="radial-bar"
             />
           </svg>
-          <p>
+          <p class="mt-2">
             Charity Wallet<br /><span class="text-primary font-bold">25%</span>
           </p>
         </div>
-        <div class="p-6 bg-light rounded-xl">
+        <div
+          class="p-6 bg-light/30 rounded-xl backdrop-blur border border-white/10"
+        >
           <svg width="120" height="120">
             <circle
               cx="60"
@@ -147,9 +163,13 @@
               class="radial-bar"
             />
           </svg>
-          <p>Dev / Team<br /><span class="text-primary font-bold">10%</span></p>
+          <p class="mt-2">
+            Dev / Team<br /><span class="text-primary font-bold">10%</span>
+          </p>
         </div>
-        <div class="p-6 bg-light rounded-xl">
+        <div
+          class="p-6 bg-light/30 rounded-xl backdrop-blur border border-white/10"
+        >
           <svg width="120" height="120">
             <circle
               cx="60"
@@ -161,9 +181,13 @@
               class="radial-bar"
             />
           </svg>
-          <p>Community<br /><span class="text-primary font-bold">10%</span></p>
+          <p class="mt-2">
+            Community<br /><span class="text-primary font-bold">10%</span>
+          </p>
         </div>
-        <div class="p-6 bg-light rounded-xl">
+        <div
+          class="p-6 bg-light/30 rounded-xl backdrop-blur border border-white/10"
+        >
           <svg width="120" height="120">
             <circle
               cx="60"
@@ -175,7 +199,7 @@
               class="radial-bar"
             />
           </svg>
-          <p>
+          <p class="mt-2">
             Treasury / Ops<br /><span class="text-primary font-bold">5%</span>
           </p>
         </div>
@@ -189,127 +213,203 @@
     >
       <h2 class="text-5xl font-press text-primary mb-20">Roadmap</h2>
 
-      <!-- Whale SVG -->
+      <!-- New improved Whale SVG (parallel rocket + straps) -->
       <svg
         id="whale-scroll"
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 800 400"
-        class="w-96 absolute left-[-300px] top-20"
+        viewBox="0 0 980 420"
+        class="w-[28rem] absolute left-[-320px] top-20"
       >
-        <ellipse
-          cx="300"
-          cy="200"
-          rx="220"
-          ry="110"
-          fill="#1E90FF"
-          stroke="#0B132B"
-          stroke-width="6"
-        />
-        <path
-          d="M80 170 Q40 140 60 200 Q40 260 80 230"
-          fill="#1E90FF"
-          stroke="#0B132B"
-          stroke-width="6"
-        />
-        <ellipse
-          cx="250"
-          cy="250"
-          rx="40"
-          ry="20"
-          fill="#187bcd"
-          stroke="#0B132B"
-          stroke-width="4"
-        />
-        <circle
-          id="eye-white"
-          cx="180"
-          cy="180"
-          r="18"
-          fill="#fff"
-          stroke="#111"
-          stroke-width="3"
-        />
-        <circle id="eye-pupil" cx="180" cy="180" r="8" fill="#111" />
-        <circle id="blowhole" cx="260" cy="110" r="12" fill="#0B132B" />
-        <rect
-          id="rocket-body"
-          x="420"
-          y="130"
-          width="250"
-          height="140"
-          rx="30"
-          fill="#FF4136"
-          stroke="#111"
-          stroke-width="6"
-        />
-        <polygon
-          points="670,130 710,160 670,190"
-          fill="#FF851B"
-          stroke="#111"
-          stroke-width="4"
-        />
-        <polygon
-          points="670,240 710,210 670,180"
-          fill="#FF851B"
-          stroke="#111"
-          stroke-width="4"
-        />
-        <polygon
-          id="rocket-flame"
-          points="670,160 730,200 670,240"
-          fill="orange"
-          stroke="red"
-          stroke-width="5"
-        />
-        <line
-          x1="400"
-          y1="130"
-          x2="400"
-          y2="270"
-          stroke="brown"
-          stroke-width="14"
-        />
-        <line
-          x1="440"
-          y1="130"
-          x2="440"
-          y2="270"
-          stroke="brown"
-          stroke-width="14"
-        />
-        <circle
-          cx="300"
-          cy="200"
-          r="55"
-          fill="gold"
-          stroke="#B8860B"
-          stroke-width="6"
-        />
-        <text
-          x="300"
-          y="215"
-          font-size="38"
-          text-anchor="middle"
-          fill="#111"
-          font-family="Arial Black, sans-serif"
-        >
-          GAF
-        </text>
+        <defs>
+          <linearGradient id="whaleBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#2ba6ff" />
+            <stop offset="100%" stop-color="#0f6bbd" />
+          </linearGradient>
+          <linearGradient id="belly" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#cfe8ff" />
+            <stop offset="100%" stop-color="#9fc9ff" />
+          </linearGradient>
+          <radialGradient id="coinGlow" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#fff7c2" />
+            <stop offset="60%" stop-color="#ffd54d" />
+            <stop offset="100%" stop-color="#b8860b" />
+          </radialGradient>
+          <linearGradient id="rocketRed" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ff5353" />
+            <stop offset="100%" stop-color="#d22323" />
+          </linearGradient>
+          <radialGradient id="flame" cx="30%" cy="50%" r="70%">
+            <stop offset="0%" stop-color="#fff07a" />
+            <stop offset="60%" stop-color="#ffa028" />
+            <stop offset="100%" stop-color="#ff3b1f" />
+          </radialGradient>
+        </defs>
+
+        <g id="whale">
+          <path
+            d="M110,225 C70,190 55,165 55,165 C45,200 45,240 55,275 C55,275 70,250 110,225 Z"
+            fill="url(#whaleBlue)"
+            stroke="#0b2b55"
+            stroke-width="6"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M130,145 C240,70 560,75 690,155 C770,205 770,260 690,310 C560,390 240,355 130,285 Z"
+            fill="url(#whaleBlue)"
+            stroke="#0b2b55"
+            stroke-width="6"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M170,210 C270,150 540,150 650,205 C705,235 705,245 650,275 C540,330 270,310 170,255 Z"
+            fill="url(#belly)"
+            opacity="0.6"
+          />
+          <path
+            d="M300,275 C315,300 365,305 385,292 C365,288 340,270 300,275 Z"
+            fill="#0c87e0"
+            stroke="#0b2b55"
+            stroke-width="4"
+            stroke-linejoin="round"
+          />
+          <circle
+            id="eye-white"
+            cx="235"
+            cy="205"
+            r="15"
+            fill="#ffffff"
+            stroke="#0b2b55"
+            stroke-width="3"
+          />
+          <circle id="eye-pupil" cx="235" cy="205" r="7" fill="#0b2b55" />
+          <ellipse
+            id="blowhole"
+            cx="300"
+            cy="165"
+            rx="12"
+            ry="8"
+            fill="#08345f"
+          />
+          <circle
+            cx="470"
+            cy="240"
+            r="48"
+            fill="url(#coinGlow)"
+            stroke="#8a6500"
+            stroke-width="6"
+          />
+          <text
+            x="470"
+            y="248"
+            font-size="34"
+            font-family="Arial Black, sans-serif"
+            text-anchor="middle"
+            fill="#111"
+          >
+            GAF
+          </text>
+        </g>
+
+        <g id="rocket" transform="translate(610,145)">
+          <rect
+            id="rocket-body"
+            x="0"
+            y="0"
+            width="260"
+            height="135"
+            rx="30"
+            fill="url(#rocketRed)"
+            stroke="#111"
+            stroke-width="6"
+          />
+          <path
+            d="M0,0 L-38,68 L0,135"
+            fill="#a81818"
+            stroke="#111"
+            stroke-width="6"
+          />
+          <path
+            d="M210,0 L260,24 L210,48 Z"
+            fill="#ff922b"
+            stroke="#111"
+            stroke-width="4"
+          />
+          <path
+            d="M210,135 L260,111 L210,87 Z"
+            fill="#ff922b"
+            stroke="#111"
+            stroke-width="4"
+          />
+          <rect
+            x="260"
+            y="42"
+            width="22"
+            height="50"
+            fill="#333"
+            stroke="#111"
+            stroke-width="4"
+            rx="6"
+          />
+          <path
+            id="rocket-flame"
+            d="M282,35 C322,68 322,108 282,140 L260,120 L260,56 Z"
+            fill="url(#flame)"
+            stroke="#b31616"
+            stroke-width="3"
+          />
+        </g>
+
+        <g id="straps">
+          <path
+            d="M600,155 C520,120 420,120 340,150"
+            fill="none"
+            stroke="#784421"
+            stroke-width="14"
+            stroke-linecap="round"
+          />
+          <path
+            d="M600,270 C520,310 420,310 340,285"
+            fill="none"
+            stroke="#784421"
+            stroke-width="14"
+            stroke-linecap="round"
+          />
+          <rect
+            x="565"
+            y="146"
+            width="18"
+            height="18"
+            rx="3"
+            fill="#5a3a1a"
+            stroke="#2f1f10"
+            stroke-width="3"
+          />
+          <rect
+            x="565"
+            y="262"
+            width="18"
+            height="18"
+            rx="3"
+            fill="#5a3a1a"
+            stroke="#2f1f10"
+            stroke-width="3"
+          />
+        </g>
       </svg>
 
-      <!-- Timeline -->
-      <div class="relative z-10 max-w-3xl mx-auto">
+      <!-- Timeline (line behind, content above) -->
+      <div class="relative z-0 max-w-3xl mx-auto">
         <div
           id="roadmap-line"
-          class="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-700 rounded-full"
+          class="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-700 rounded-full -z-10 pointer-events-none"
         ></div>
         <div
           id="roadmap-line-fill"
-          class="absolute left-1/2 top-0 w-1 bg-gradient-to-b from-yellow-400 via-orange-500 to-red-600 rounded-full"
+          class="absolute left-1/2 top-0 w-1 bg-gradient-to-b from-yellow-400 via-orange-500 to-red-600 rounded-full -z-10 pointer-events-none"
           style="height: 0"
         ></div>
 
-        <div class="space-y-24 relative">
+        <div class="space-y-24 relative z-10">
           <div class="roadmap-step relative" data-milestone="10k">
             <div
               class="absolute left-1/2 -translate-x-1/2 w-6 h-6 bg-gray-600 rounded-full border-4 border-dark glow-dot"
@@ -337,7 +437,7 @@
             <h3 class="text-2xl font-bold text-primary mt-10">100k Holders</h3>
             <p class="text-gray-300">
               🌍 Global campaign: $1M+ donation + partnerships with major
-              charities. Media splash.
+              charities.
             </p>
           </div>
           <div class="roadmap-step relative" data-milestone="250k">
@@ -346,8 +446,8 @@
             ></div>
             <h3 class="text-2xl font-bold text-primary mt-10">250k Holders</h3>
             <p class="text-gray-300">
-              🎉 Mega milestone: $5M+ total donated. NFT whales, merch drops,
-              community treasury.
+              🎉 Mega milestone: $5M+ total donated. NFTs, merch, community
+              treasury.
             </p>
           </div>
           <div class="roadmap-step relative" data-milestone="beyond">
@@ -379,7 +479,7 @@
       </a>
     </section>
 
-    <footer class="py-6 bg-light text-center text-gray-500 text-sm">
+    <footer class="py-6 bg-light/60 text-center text-gray-500 text-sm">
       <p>© <span id="year"></span> GiveAF. All memes reserved.</p>
     </footer>
 
@@ -389,7 +489,7 @@
 
       // Whale across roadmap
       gsap.to("#whale-scroll", {
-        x: window.innerWidth + 400,
+        x: window.innerWidth + 420,
         scrollTrigger: {
           trigger: "#roadmap",
           start: "top bottom",
@@ -397,6 +497,7 @@
           scrub: true,
         },
       });
+      // Whale bobbing
       gsap.to("#whale-scroll", {
         y: "+=20",
         duration: 3,
@@ -404,14 +505,16 @@
         yoyo: true,
         ease: "sine.inOut",
       });
+      // Rocket flame flicker
       gsap.to("#rocket-flame", {
-        scaleY: 1.3,
-        transformOrigin: "center",
-        fill: "yellow",
-        duration: 0.3,
+        scaleY: 1.35,
+        skewX: 4,
+        transformOrigin: "10% 50%",
+        duration: 0.22,
         yoyo: true,
         repeat: -1,
       });
+      // Whale eye blink
       gsap.to("#eye-pupil", {
         scaleY: 0.1,
         transformOrigin: "center",
@@ -426,6 +529,7 @@
         gsap.to(bar, {
           strokeDashoffset: 0,
           duration: 2,
+          ease: "power2.out",
           scrollTrigger: {
             trigger: "#tokenomics",
             start: "top 80%",
@@ -445,19 +549,19 @@
         },
       });
 
-      // Glow dots + coin spray
-      function sprayCoins(amount = 8) {
+      // Coin spray function
+      function sprayCoins(amount = 10) {
         for (let i = 0; i < amount; i++) {
           const coin = document.createElement("img");
           coin.src = "assets/images/coin.svg";
-          coin.className = "absolute w-8 h-8";
+          coin.className = "coin";
           document.body.appendChild(coin);
           gsap.fromTo(
             coin,
-            { x: 260, y: window.scrollY + 110, opacity: 0, scale: 0.5 },
+            { x: 300, y: window.scrollY + 165, opacity: 0, scale: 0.5 },
             {
               x: Math.random() * window.innerWidth,
-              y: window.scrollY - 200 - Math.random() * 200,
+              y: window.scrollY - 200 - Math.random() * 250,
               opacity: 1,
               scale: 1,
               duration: 3,
@@ -468,6 +572,8 @@
           );
         }
       }
+
+      // Glow dots & coin bursts on milestone enter
       document.querySelectorAll(".roadmap-step").forEach((step) => {
         const dot = step.querySelector(".glow-dot");
         gsap.to(dot, {
