@@ -146,12 +146,12 @@
         z-index: 1;
       }
 
-      /* badge sizing (replaces #whale-svg) */
-      #badge-svg {
+      /* whale image sizing on breakpoints */
+      #whale-img {
         width: min(32rem, 85vw);
       }
       @media (min-width: 1024px) {
-        #badge-svg {
+        #whale-img {
           width: 38rem;
         }
       }
@@ -237,236 +237,9 @@
           </div>
         </div>
 
-        <!-- whale svg (inspired by your artwork) -->
+        <!-- whale badge image (uses provided PNG, no vector trace) -->
         <div class="relative z-10">
-          <svg
-            id="whale-svg"
-            class="hidden"
-            viewBox="0 0 980 420"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <linearGradient id="whaleBlue" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#2BA6FF" />
-                <stop offset="100%" stop-color="#0F6BBD" />
-              </linearGradient>
-              <linearGradient id="belly" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#CFE8FF" />
-                <stop offset="100%" stop-color="#9FC9FF" />
-              </linearGradient>
-              <radialGradient id="coinGlow" cx="50%" cy="50%" r="60%">
-                <stop offset="0%" stop-color="#FFF7C2" />
-                <stop offset="60%" stop-color="#FFD446" />
-                <stop offset="100%" stop-color="#B8860B" />
-              </radialGradient>
-              <linearGradient id="rocketRed" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#FF5353" />
-                <stop offset="100%" stop-color="#D22323" />
-              </linearGradient>
-              <radialGradient id="flame" cx="30%" cy="50%" r="70%">
-                <stop offset="0%" stop-color="#FFF07A" />
-                <stop offset="60%" stop-color="#FFA028" />
-                <stop offset="100%" stop-color="#FF3B1F" />
-              </radialGradient>
-            </defs>
-            <!-- tail -->
-            <path
-              d="M110,225 C70,190 55,165 55,165 C45,200 45,240 55,275 C55,275 70,250 110,225 Z"
-              fill="url(#whaleBlue)"
-              stroke="#0B2B55"
-              stroke-width="6"
-              stroke-linejoin="round"
-            />
-            <!-- body -->
-            <path
-              d="M130,145 C240,70 560,75 690,155 C770,205 770,260 690,310 C560,390 240,355 130,285 Z"
-              fill="url(#whaleBlue)"
-              stroke="#0B2B55"
-              stroke-width="6"
-              stroke-linejoin="round"
-            />
-            <!-- belly -->
-            <path
-              d="M170,210 C270,150 540,150 650,205 C705,235 705,245 650,275 C540,330 270,310 170,255 Z"
-              fill="url(#belly)"
-              opacity=".6"
-            />
-            <!-- fin -->
-            <path
-              d="M300,275 C315,300 365,305 385,292 C365,288 340,270 300,275 Z"
-              fill="#0C87E0"
-              stroke="#0B2B55"
-              stroke-width="4"
-              stroke-linejoin="round"
-            />
-            <!-- eye -->
-            <circle
-              id="eye-white"
-              cx="235"
-              cy="205"
-              r="15"
-              fill="#fff"
-              stroke="#0B2B55"
-              stroke-width="3"
-            />
-            <circle id="eye-pupil" cx="235" cy="205" r="7" fill="#0B2B55" />
-            <!-- blowhole -->
-            <ellipse
-              id="blowhole"
-              cx="300"
-              cy="165"
-              rx="12"
-              ry="8"
-              fill="#08345F"
-            />
-            <!-- emblem coin -->
-            <circle
-              cx="470"
-              cy="240"
-              r="48"
-              fill="url(#coinGlow)"
-              stroke="#8A6500"
-              stroke-width="6"
-            />
-            <text
-              x="470"
-              y="248"
-              font-size="34"
-              font-family="Outfit, Arial Black, sans-serif"
-              text-anchor="middle"
-              fill="#111"
-            >
-              GAF
-            </text>
-            <!-- rocket (parallel) -->
-            <g transform="translate(610,145)">
-              <rect
-                id="rocket-body"
-                x="0"
-                y="0"
-                width="260"
-                height="135"
-                rx="30"
-                fill="url(#rocketRed)"
-                stroke="#111"
-                stroke-width="6"
-              />
-              <path
-                d="M0,0 L-38,68 L0,135"
-                fill="#A81818"
-                stroke="#111"
-                stroke-width="6"
-              />
-              <path
-                d="M210,0 L260,24 L210,48 Z"
-                fill="#FF922B"
-                stroke="#111"
-                stroke-width="4"
-              />
-              <path
-                d="M210,135 L260,111 L210,87 Z"
-                fill="#FF922B"
-                stroke="#111"
-                stroke-width="4"
-              />
-              <rect
-                x="260"
-                y="42"
-                width="22"
-                height="50"
-                fill="#333"
-                stroke="#111"
-                stroke-width="4"
-                rx="6"
-              />
-              <path
-                id="rocket-flame"
-                d="M282,35 C322,68 322,108 282,140 L260,120 L260,56 Z"
-                fill="url(#flame)"
-                stroke="#B31616"
-                stroke-width="3"
-              />
-            </g>
-            <!-- straps -->
-            <g>
-              <path
-                d="M600,155 C520,120 420,120 340,150"
-                fill="none"
-                stroke="#784421"
-                stroke-width="14"
-                stroke-linecap="round"
-              />
-              <path
-                d="M600,270 C520,310 420,310 340,285"
-                fill="none"
-                stroke="#784421"
-                stroke-width="14"
-                stroke-linecap="round"
-              />
-              <rect
-                x="565"
-                y="146"
-                width="18"
-                height="18"
-                rx="3"
-                fill="#5A3A1A"
-                stroke="#2F1F10"
-                stroke-width="3"
-              />
-              <rect
-                x="565"
-                y="262"
-                width="18"
-                height="18"
-                rx="3"
-                fill="#5A3A1A"
-                stroke="#2F1F10"
-                stroke-width="3"
-              />
-            </g>
-          </svg>
-          <!-- NEW: Coin badge SVG with animatable whale (background static) -->
-          <svg id="badge-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" aria-label="GiveAF coin badge">
-            <defs>
-              <radialGradient id="coinGlow" cx="50%" cy="40%" r="65%">
-                <stop offset="0%" stop-color="#FFF7C2" />
-                <stop offset="60%" stop-color="#FFD446" />
-                <stop offset="100%" stop-color="#B8860B" />
-              </radialGradient>
-              <radialGradient id="innerNight" cx="50%" cy="55%" r="70%">
-                <stop offset="0%" stop-color="#0F224B" />
-                <stop offset="100%" stop-color="#08122B" />
-              </radialGradient>
-              <linearGradient id="whaleBlue" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#2BA6FF" />
-                <stop offset="100%" stop-color="#0F6BBD" />
-              </linearGradient>
-            </defs>
-            <!-- COIN (static background) -->
-            <circle cx="300" cy="300" r="285" fill="url(#coinGlow)" stroke="#8A6500" stroke-width="12" />
-            <circle cx="300" cy="300" r="250" fill="url(#innerNight)" stroke="#0A132E" stroke-width="16" />
-            <!-- WHALE (separate group so we can animate it) -->
-            <g id="whale" transform="translate(0,0)">
-              <!-- tail -->
-              <g id="tail" transform="translate(145,280) rotate(-6)">
-                <path d="M-35,-5 C-75,-30 -90,-55 -92,-60 C-98,-35 -98,-5 -92,20 C-92,20 -75,0 -35,-5 Z" fill="url(#whaleBlue)" stroke="#07244B" stroke-width="8" stroke-linejoin="round" />
-              </g>
-              <!-- body -->
-              <path d="M160,230 C250,165 460,168 520,225 C560,263 560,330 505,365 C420,420 240,400 165,345 Z" fill="url(#whaleBlue)" stroke="#07244B" stroke-width="10" stroke-linejoin="round" />
-              <!-- belly highlight -->
-              <path d="M185,295 C265,245 455,245 510,275 C535,290 535,305 508,320 C445,355 280,345 195,315 Z" fill="#CFE8FF" opacity=".55" />
-              <!-- fin -->
-              <path d="M300,355 C315,375 360,380 380,368 C358,364 330,348 300,355 Z" fill="#0C87E0" stroke="#07244B" stroke-width="6" stroke-linejoin="round" />
-              <!-- smile -->
-              <path d="M430,305 q-30,28 -75,10" fill="none" stroke="#07244B" stroke-width="8" stroke-linecap="round" />
-              <!-- eye (ellipse for winks) -->
-              <ellipse id="eye" cx="390" cy="275" rx="12" ry="12" fill="#07244B" />
-              <!-- dots highlight -->
-              <circle cx="350" cy="250" r="4" fill="#CFE8FF" opacity=".6" />
-              <circle cx="365" cy="260" r="4" fill="#CFE8FF" opacity=".6" />
-              <circle cx="380" cy="252" r="4" fill="#CFE8FF" opacity=".6" />
-            </g>
-          </svg>
+          <img id="whale-img" src="assets/images/whale-new.png" alt="Whale Badge" />
         </div>
       </div>
     </section>
@@ -753,7 +526,7 @@
             </div>
           </div>
 
-          <!-- NOTE: flying whale removed per request -->
+          <!-- flying whale removed per user request -->
         </div>
       </div>
     </section>
@@ -829,32 +602,14 @@
       window.addEventListener("DOMContentLoaded", () => {
         gsap.registerPlugin(ScrollTrigger);
 
-        /* NEW: coin-badge whale animation */
-        gsap.to("#whale", {
+        // hero whale subtle float (image) — animate badge gently
+        gsap.to("#whale-img", {
           y: 14,
           rotation: 2,
-          transformOrigin: "50% 50%",
           duration: 3,
           yoyo: true,
           repeat: -1,
           ease: "sine.inOut",
-        });
-        gsap.to("#tail", {
-          rotation: 8,
-          transformOrigin: "20% 50%",
-          duration: 1.6,
-          yoyo: true,
-          repeat: -1,
-          ease: "sine.inOut",
-        });
-        /* wink: squash eye vertically briefly */
-        gsap.to("#eye", {
-          scaleY: 0.15,
-          transformOrigin: "50% 50%",
-          duration: 0.08,
-          yoyo: true,
-          repeat: -1,
-          repeatDelay: 3,
         });
 
         // tokenomics rings fill on view
@@ -885,7 +640,7 @@
           },
         });
 
-        // (removed flying whale and associated animations per redesign)
+        // flying whale animations removed per user request
 
         // coin spray bursts at each milestone
         function sprayCoins(origin) {
