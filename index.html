@@ -115,31 +115,9 @@
         stroke-dashoffset: 565;
       }
 
-      /* roadmap vertical line behind content */
+      /* roadmap cards – no vertical bar or circles */
       .road-wrap {
         position: relative;
-      }
-      .road-line,
-      .road-fill {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 4px;
-        border-radius: 9999px;
-      }
-      .road-line {
-        top: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.12);
-        z-index: 0;
-        pointer-events: none;
-      }
-      .road-fill {
-        top: 0;
-        height: 0;
-        background: linear-gradient(#ffd446, #ffb347, #ff7a2a);
-        z-index: 0;
-        box-shadow: 0 0 24px rgba(255, 122, 42, 0.35);
       }
       .road-content {
         position: relative;
@@ -239,7 +217,11 @@
 
         <!-- whale badge image (uses provided PNG, no vector trace) -->
         <div class="relative z-10">
-          <img id="whale-img" src="assets/images/whale-new.png" alt="Whale Badge" />
+          <img
+            id="whale-img"
+            src="assets/images/whale-new.png"
+            alt="Whale Badge"
+          />
         </div>
       </div>
     </section>
@@ -466,14 +448,8 @@
         </h2>
 
         <div class="road-wrap">
-          <div class="road-line"></div>
-          <div class="road-fill" id="road-fill"></div>
-
           <div class="road-content space-y-28">
-            <div class="relative">
-              <div
-                class="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 bg-white/20 rounded-full border-4 border-dark glow-dot"
-              ></div>
+            <div class="relative p-6 border border-white/15 rounded-xl">
               <h3 class="text-2xl font-extrabold text-primary">10k Holders</h3>
               <p class="text-white/80 mt-2">
                 🚀 First donation: 25B tokens → $50k+ to community-voted
@@ -481,10 +457,7 @@
               </p>
             </div>
 
-            <div class="relative">
-              <div
-                class="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 bg-white/20 rounded-full border-4 border-dark glow-dot"
-              ></div>
+            <div class="relative p-6 border border-white/15 rounded-xl">
               <h3 class="text-2xl font-extrabold text-primary">50k Holders</h3>
               <p class="text-white/80 mt-2">
                 🐳 Whale vote round: 50B → $250k to oceans / kids / animals
@@ -492,10 +465,7 @@
               </p>
             </div>
 
-            <div class="relative">
-              <div
-                class="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 bg-white/20 rounded-full border-4 border-dark glow-dot"
-              ></div>
+            <div class="relative p-6 border border-white/15 rounded-xl">
               <h3 class="text-2xl font-extrabold text-primary">100k Holders</h3>
               <p class="text-white/80 mt-2">
                 🌍 Global partners + media push. Target: $1M+ donated
@@ -503,10 +473,7 @@
               </p>
             </div>
 
-            <div class="relative">
-              <div
-                class="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 bg-white/20 rounded-full border-4 border-dark glow-dot"
-              ></div>
+            <div class="relative p-6 border border-white/15 rounded-xl">
               <h3 class="text-2xl font-extrabold text-primary">250k Holders</h3>
               <p class="text-white/80 mt-2">
                 🎉 $5M+ total donations. NFT whales, merch drops, community
@@ -514,10 +481,7 @@
               </p>
             </div>
 
-            <div class="relative">
-              <div
-                class="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 bg-white/20 rounded-full border-4 border-dark glow-dot"
-              ></div>
+            <div class="relative p-6 border border-white/15 rounded-xl">
               <h3 class="text-2xl font-extrabold text-primary">Beyond</h3>
               <p class="text-white/80 mt-2">
                 ♾️ Sustainable cycles: governed mints fund new charity rounds.
@@ -528,6 +492,98 @@
 
           <!-- flying whale removed per user request -->
         </div>
+      </div>
+    </section>
+
+    <!-- VOTE SECTION -->
+    <section id="vote" class="py-32 bg-gradient-to-b from-deep to-dark">
+      <div class="max-w-6xl mx-auto px-6 text-center">
+        <h2 class="font-display text-4xl md:text-5xl mb-10">
+          <span class="text-primary">Vote</span> for the Next Charity
+        </h2>
+        <p class="text-white/80 max-w-2xl mx-auto mb-10">
+          Cast your vote for which cause should receive the next donation. Each
+          visitor may vote once. Results update in real time as the community
+          weighs in.
+        </p>
+        <div id="vote-bars" class="space-y-8 max-w-xl mx-auto text-left">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Save the Rainforest</span>
+              <button
+                class="vote-btn px-3 py-1 text-sm rounded bg-primary text-black font-medium hover:drop-shadow-neon"
+                data-id="rainforest"
+              >
+                Vote
+              </button>
+            </div>
+            <div class="w-full h-4 bg-white/10 rounded-full overflow-hidden">
+              <div
+                id="bar-rainforest"
+                class="h-4 rounded-full bg-gradient-to-r from-primary to-accent"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Save the Whales</span>
+              <button
+                class="vote-btn px-3 py-1 text-sm rounded bg-primary text-black font-medium hover:drop-shadow-neon"
+                data-id="whales"
+              >
+                Vote
+              </button>
+            </div>
+            <div class="w-full h-4 bg-white/10 rounded-full overflow-hidden">
+              <div
+                id="bar-whales"
+                class="h-4 rounded-full bg-gradient-to-r from-primary to-accent"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Save the Ocean</span>
+              <button
+                class="vote-btn px-3 py-1 text-sm rounded bg-primary text-black font-medium hover:drop-shadow-neon"
+                data-id="ocean"
+              >
+                Vote
+              </button>
+            </div>
+            <div class="w-full h-4 bg-white/10 rounded-full overflow-hidden">
+              <div
+                id="bar-ocean"
+                class="h-4 rounded-full bg-gradient-to-r from-primary to-accent"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Save the Polar Bears</span>
+              <button
+                class="vote-btn px-3 py-1 text-sm rounded bg-primary text-black font-medium hover:drop-shadow-neon"
+                data-id="bears"
+              >
+                Vote
+              </button>
+            </div>
+            <div class="w-full h-4 bg-white/10 rounded-full overflow-hidden">
+              <div
+                id="bar-bears"
+                class="h-4 rounded-full bg-gradient-to-r from-primary to-accent"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div
+          id="vote-message"
+          class="text-primary mt-6 font-medium hidden"
+        ></div>
       </div>
     </section>
 
@@ -629,20 +685,11 @@
           });
         });
 
-        // roadmap line fill
-        gsap.to("#road-fill", {
-          height: "100%",
-          scrollTrigger: {
-            trigger: "#roadmap",
-            start: "top top",
-            end: "bottom bottom",
-            scrub: true,
-          },
-        });
+        // roadmap line fill removed – no central bar
 
         // flying whale animations removed per user request
 
-        // coin spray bursts at each milestone
+        // coin spray bursts at each milestone (for roadmap milestones)
         function sprayCoins(origin) {
           // origin: {x,y}
           for (let i = 0; i < 12; i++) {
@@ -670,24 +717,125 @@
           }
         }
 
-        // dots glow + trigger sprays
-        document.querySelectorAll(".glow-dot").forEach((dot, idx) => {
-          gsap.to(dot, {
-            backgroundColor: "#FFD446",
-            boxShadow: "0 0 20px #FFD446, 0 0 40px #FF7A2A",
-            scrollTrigger: {
-              trigger: dot.parentElement,
-              start: "top 55%",
-              onEnter: () => {
-                const rect = dot.getBoundingClientRect();
-                sprayCoins({
-                  x: rect.left + rect.width / 2,
-                  y: window.scrollY + rect.top,
-                });
+        // sprinkle coins from the top of the viewport on load. These coins
+        // overlay the page, fall gently downwards and then fade away.
+        function sprinkleCoinsOnLoad() {
+          const total = 24;
+          for (let i = 0; i < total; i++) {
+            const img = document.createElement("img");
+            img.src = "assets/images/coin.svg";
+            img.style.position = "fixed";
+            img.style.width = "24px";
+            img.style.height = "24px";
+            img.style.left = Math.random() * 100 + "%";
+            img.style.top = "-40px";
+            img.style.pointerEvents = "none";
+            document.body.appendChild(img);
+            const duration = 4 + Math.random() * 2;
+            const delay = Math.random() * 0.5;
+            gsap.to(img, {
+              y: window.innerHeight + 60,
+              opacity: 0,
+              rotation: 360 + Math.random() * 360,
+              duration: duration,
+              delay: delay,
+              ease: "linear",
+              onComplete: () => img.remove(),
+            });
+          }
+        }
+
+        // roadmap card glow (borders light up on scroll)
+        document
+          .querySelectorAll("#roadmap .road-content > div.relative")
+          .forEach((el) => {
+            // set a subtle base border colour for the cards so the transition has a starting point
+            el.style.borderColor = "rgba(255,255,255,0.15)";
+            gsap.to(el, {
+              borderColor: "#FFD446",
+              boxShadow: "0 0 20px #FFD446, 0 0 50px #FF7A2A",
+              duration: 0.4,
+              scrollTrigger: {
+                trigger: el,
+                start: "top 55%",
+                toggleActions: "play reverse play reverse",
               },
-            },
+            });
+          });
+
+        // voting logic
+        function updateVoteBars(data) {
+          const totals = Object.values(data);
+          const sum = totals.reduce((a, b) => a + b, 0) || 1;
+          for (const key in data) {
+            const bar = document.getElementById(`bar-${key}`);
+            if (bar) {
+              const pct = (data[key] / sum) * 100;
+              bar.style.width = `${pct}%`;
+            }
+          }
+        }
+        async function fetchVotes() {
+          try {
+            const res = await fetch("/api/votes");
+            if (res.ok) {
+              const data = await res.json();
+              updateVoteBars(data);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        function disableVoting() {
+          document.querySelectorAll(".vote-btn").forEach((btn) => {
+            btn.disabled = true;
+            btn.classList.add("opacity-50", "cursor-not-allowed");
+          });
+        }
+        fetchVotes();
+        const voteMessageEl = document.getElementById("vote-message");
+        if (localStorage.getItem("votedOption")) {
+          disableVoting();
+          if (voteMessageEl) {
+            voteMessageEl.textContent = "Thank you for voting!";
+            voteMessageEl.classList.remove("hidden");
+          }
+        }
+        document.querySelectorAll(".vote-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const option = btn.getAttribute("data-id");
+            if (!option) return;
+            try {
+              const res = await fetch("/api/vote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ option }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                updateVoteBars(data);
+                disableVoting();
+                localStorage.setItem("votedOption", option);
+                if (voteMessageEl) {
+                  voteMessageEl.textContent = "Thank you for voting!";
+                  voteMessageEl.classList.remove("hidden");
+                }
+              } else {
+                const err = await res.json();
+                if (voteMessageEl) {
+                  voteMessageEl.textContent =
+                    err.error || "Unable to submit vote";
+                  voteMessageEl.classList.remove("hidden");
+                }
+              }
+            } catch (e) {
+              console.error(e);
+            }
           });
         });
+
+        // start the coin sprinkle after all other initialisation
+        sprinkleCoinsOnLoad();
 
         // footer year
         document.getElementById("yr").textContent = new Date().getFullYear();
