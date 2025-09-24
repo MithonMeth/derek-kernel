@@ -587,6 +587,74 @@
       </div>
     </section>
 
+    <!-- SPIN WHEEL -->
+    <section
+      id="spinwheel"
+      class="py-28 bg-gradient-to-b from-dark to-deep text-center"
+    >
+      <h2 class="font-display text-4xl md:text-5xl mb-6">
+        <span class="text-primary">Daily Spin</span> for a Chance to Win
+      </h2>
+      <p class="text-white/80 max-w-2xl mx-auto mb-10">
+        One spin per day. If you hit the jackpot, you’ll get a unique reward
+        code!
+      </p>
+      <div
+        id="pointer"
+        class="w-16 h-3 mx-auto bg-primary rounded-full drop-shadow-neon mb-3"
+      ></div>
+      <div id="wheel-container" class="mx-auto w-[300px] h-[300px]">
+        <img
+          id="wheel"
+          src="assets/images/coin.svg"
+          alt="GAF Coin"
+          class="w-full h-full rounded-full transition-transform duration-[5000ms] ease-[cubic-bezier(0.33,1,0.68,1)]"
+        />
+      </div>
+      <button
+        id="spin-btn"
+        class="mt-8 px-6 py-3 rounded-xl bg-primary text-black font-semibold shadow-lg hover:drop-shadow-neon"
+      >
+        Spin Wheel
+      </button>
+      <div id="result" class="mt-6 text-xl text-primary font-bold"></div>
+      <div
+        id="code-display"
+        class="hidden mt-4 text-white text-lg font-mono select-all"
+      ></div>
+      <div class="mt-4">
+        <label class="text-white/60 text-sm"
+          ><input
+            type="checkbox"
+            id="forceWinToggle"
+            class="mr-2 align-middle"
+          />Force Win (testing)</label
+        >
+      </div>
+    </section>
+
+    <div
+      id="code-modal"
+      class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden"
+    >
+      <div
+        class="bg-deep text-primary p-6 rounded-xl border-2 border-primary max-w-sm w-full text-center shadow-xl"
+      >
+        <p class="text-lg font-bold mb-2">🎉 JACKPOT!</p>
+        <p>Your unique code:</p>
+        <div
+          id="win-code"
+          class="my-4 text-xl font-mono bg-white/10 py-2 rounded select-all"
+        ></div>
+        <button
+          onclick="copyCode()"
+          class="copy-btn px-4 py-2 bg-primary text-black rounded font-bold"
+        >
+          Copy Code
+        </button>
+      </div>
+    </div>
+
     <!-- FAQ -->
     <section id="faq" class="py-24">
       <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-8">
@@ -836,6 +904,93 @@
 
         // start the coin sprinkle after all other initialisation
         sprinkleCoinsOnLoad();
+
+        // SPIN WHEEL FUNCTIONALITY
+        const wheel = document.getElementById("wheel");
+        const result = document.getElementById("result");
+        const modal = document.getElementById("code-modal");
+        const winCodeEl = document.getElementById("win-code");
+        const forceWinToggle = document.getElementById("forceWinToggle");
+        let spinning = false;
+
+        function getRandomCode(len = 10) {
+          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          let code = "";
+          for (let i = 0; i < len; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return code;
+        }
+
+        function copyCode() {
+          const winCodeEl = document.getElementById("win-code");
+          const codeText = winCodeEl?.textContent?.trim() || "";
+          if (!codeText) return alert("No code available to copy.");
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard
+              .writeText(codeText)
+              .then(() => {
+                modal.classList.add("hidden");
+                const displayBox = document.getElementById("code-display");
+                displayBox.textContent = codeText;
+                displayBox.classList.remove("hidden");
+              })
+              .catch(() => {
+                fallbackCopy(codeText);
+              });
+          } else {
+            fallbackCopy(codeText);
+          }
+        }
+
+        function fallbackCopy(text) {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "absolute";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand("copy");
+            modal.classList.add("hidden");
+            const displayBox = document.getElementById("code-display");
+            displayBox.textContent = text;
+            displayBox.classList.remove("hidden");
+          } catch (err) {
+            alert("Copy failed. Please select the code manually.");
+          }
+          document.body.removeChild(textarea);
+        }
+
+        document.getElementById("spin-btn")?.addEventListener("click", () => {
+          if (spinning) return;
+          spinning = true;
+          result.textContent = "";
+          modal.classList.add("hidden");
+
+          const spins = 5 + Math.floor(Math.random() * 3);
+          const win = forceWinToggle?.checked || Math.random() < 0.013;
+          const degrees = win
+            ? 360 * spins
+            : 360 * spins + Math.floor(Math.random() * 300);
+          wheel.style.transform = "rotate(" + degrees + "deg)";
+
+          setTimeout(() => {
+            spinning = false;
+            if (win) {
+              // re-trigger the existing coin sprinkle 10x
+              for (let j = 0; j < 10; j++) {
+                setTimeout(() => sprinkleCoinsOnLoad(), j * 250);
+              }
+              const code = getRandomCode();
+              winCodeEl.textContent = code;
+              modal.classList.remove("hidden");
+            } else {
+              result.textContent = "Not this time — try again tomorrow.";
+            }
+          }, 5000);
+        });
 
         // footer year
         document.getElementById("yr").textContent = new Date().getFullYear();
