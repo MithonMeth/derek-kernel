@@ -2,8 +2,7 @@
 // Grep this file for "TODO" before promoting any deploy to production.
 
 export const siteConfig = {
-  // TODO: replace with the real production domain. Anything else is a clone.
-  canonicalDomain: process.env.NEXT_PUBLIC_CANONICAL_DOMAIN ?? "taco.example",
+  canonicalDomain: process.env.NEXT_PUBLIC_CANONICAL_DOMAIN ?? "tacotrades.fun",
 
   // TODO: GitHub repo the site deploys from, e.g. "your-org/taco".
   githubRepo: process.env.NEXT_PUBLIC_GITHUB_REPO ?? "your-org/taco",
@@ -21,14 +20,18 @@ export const siteConfig = {
   telegramUrl:
     process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "https://t.me/+z7jeL-5hLMY5OWI0",
 
-  // TODO: disclosure contact for security.txt (RFC 9116).
+  // TODO: confirm this mailbox is real and monitored — see public/.well-known/security.txt.
   securityContact:
-    process.env.NEXT_PUBLIC_SECURITY_CONTACT ?? "mailto:security@taco.example",
+    process.env.NEXT_PUBLIC_SECURITY_CONTACT ?? "mailto:security@tacotrades.fun",
 } as const;
 
-/** Deployed commit, wired from Vercel's system env var. Unset outside a Vercel build. */
+/**
+ * Deployed commit. Checks Vercel's system env var first (per SPEC.md), falling
+ * back to Heroku's (requires `heroku labs:enable runtime-dyno-metadata`).
+ * Null if neither is set, e.g. local dev.
+ */
 export function getDeployedCommit() {
-  const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.HEROKU_SLUG_COMMIT;
   return {
     full: sha ?? null,
     short: sha ? sha.slice(0, 7) : "0000000",

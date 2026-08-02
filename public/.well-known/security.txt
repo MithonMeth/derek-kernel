@@ -1,5 +1,5 @@
-# TODO before launch: keep this file in sync with lib/site-config.ts
-Contact: mailto:security@taco.example
+# TODO before launch: confirm security@tacotrades.fun is a real, monitored mailbox.
+Contact: mailto:security@tacotrades.fun
 Expires: 2027-08-02T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://taco.example/.well-known/security.txt
+Canonical: https://tacotrades.fun/.well-known/security.txt
