@@ -2,4 +2,4 @@
 Contact: mailto:security@tacotrades.fun
 Expires: 2027-08-02T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://tacotrades.fun/.well-known/security.txt
+Canonical: https://www.tacotrades.fun/.well-known/security.txt

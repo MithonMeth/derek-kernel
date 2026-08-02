@@ -2,7 +2,10 @@
 // Grep this file for "TODO" before promoting any deploy to production.
 
 export const siteConfig = {
-  canonicalDomain: process.env.NEXT_PUBLIC_CANONICAL_DOMAIN ?? "tacotrades.fun",
+  // The apex forwards here at the DNS/registrar level (GoDaddy doesn't
+  // support ALIAS/ANAME records for root domains), so www is where the
+  // app is actually served from and holds the real cert.
+  canonicalDomain: process.env.NEXT_PUBLIC_CANONICAL_DOMAIN ?? "www.tacotrades.fun",
 
   // TODO: GitHub repo the site deploys from, e.g. "your-org/taco".
   githubRepo: process.env.NEXT_PUBLIC_GITHUB_REPO ?? "your-org/taco",
