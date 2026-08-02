@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const LETTERS = ["T", "A", "C", "O"];
 
@@ -9,10 +9,18 @@ export function Loader() {
   const [pct, setPct] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const lockedScrollY = useRef(0);
 
   useEffect(() => {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.body.style.overflow = "hidden";
+
+    // overflow:hidden alone doesn't stop touch-swipe scrolling on mobile
+    // Safari/Chrome, so pin the body in place instead.
+    lockedScrollY.current = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${lockedScrollY.current}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
 
     const letterTimers = LETTERS.map((_, i) =>
       setTimeout(() => setLitCount((n) => Math.max(n, i + 1)), reduced ? 0 : i * 110),
@@ -40,7 +48,11 @@ export function Loader() {
 
   useEffect(() => {
     if (!leaving) return;
-    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    window.scrollTo(0, lockedScrollY.current);
     const t = setTimeout(() => setRemoved(true), 1100);
     return () => clearTimeout(t);
   }, [leaving]);
@@ -56,6 +68,7 @@ export function Loader() {
           </span>
         ))}
       </div>
+      <p className="tagline mono">Trump Always Chickens Out</p>
       <div className="pct mono" id="pct">
         {String(pct).padStart(3, "0")}
       </div>

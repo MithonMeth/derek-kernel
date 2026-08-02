@@ -42,12 +42,17 @@ body {
   background: var(--chilli);
   color: var(--bone);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 #loader .letters {
   display: flex;
   gap: clamp(4px, 1.5vw, 16px);
+}
+#loader .tagline {
+  margin-top: clamp(8px, 2vw, 20px);
+  opacity: 0.85;
 }
 #loader .letters span {
   display: block;
