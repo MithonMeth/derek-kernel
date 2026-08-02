@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "heroku-postbuild": "next build",
     "start": "next start",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "next": "16.2.12",
