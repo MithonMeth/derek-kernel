@@ -582,10 +582,7 @@ h2 {
 }
 @media (max-width: 820px) {
   .row {
-    grid-template-columns: 1fr 80px;
-  }
-  .row p {
-    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
   }
 }
 
