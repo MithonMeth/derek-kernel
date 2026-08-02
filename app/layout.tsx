@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, JetBrains_Mono } from "next/font/google";
+import { connection } from "next/server";
 import { siteConfig } from "@/lib/site-config";
 import { CustomCursor } from "@/components/CustomCursor";
 import { Loader } from "@/components/Loader";
@@ -27,11 +28,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Forces dynamic rendering so proxy.ts's per-request CSP nonce is available
+  // when Next.js renders its own inline hydration scripts. See proxy.ts.
+  await connection();
+
   return (
     <html lang="en" className={`${archivo.variable} ${jetbrainsMono.variable}`}>
       <body>
