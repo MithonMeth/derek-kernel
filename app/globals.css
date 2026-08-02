@@ -352,12 +352,12 @@ h2 {
 .opt:disabled {
   cursor: default;
 }
-.opt.locked {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.opt:not(.locked):hover h3 {
+.opt:not(:disabled):hover h3 {
   color: var(--corn);
+}
+.vote-status {
+  margin-top: 20px;
+  opacity: 0.75;
 }
 .meta {
   display: flex;
@@ -373,6 +373,10 @@ h2 {
   margin-top: 26px;
   font-size: clamp(16px, 1.9vw, 20px);
   line-height: 1.5;
+}
+.sec-note {
+  margin-top: 16px;
+  opacity: 0.55;
 }
 .flow {
   margin-top: 52px;

@@ -1,21 +1,11 @@
-"use client";
+import { currentRound } from "@/lib/data";
+import type { Tally } from "@/lib/votes";
+import { Needle } from "@/components/Needle";
 
-import { useEffect, useRef } from "react";
-import { currentRound, tally } from "@/lib/data";
-
-const score = Math.round((tally.taco / (tally.taco + tally.noTaco)) * 100);
-const needleDeg = (score / 100) * 180 - 90;
-const voteCount = tally.taco + tally.noTaco;
-
-export function Hero() {
-  const needleRef = useRef<SVGGElement>(null);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      if (needleRef.current) needleRef.current.style.transform = `rotate(${needleDeg}deg)`;
-    });
-    return () => cancelAnimationFrame(id);
-  }, []);
+export function Hero({ tally }: { tally: Tally }) {
+  const total = tally.taco + tally.noTaco;
+  const score = total ? Math.round((tally.taco / total) * 100) : 50;
+  const needleDeg = (score / 100) * 180 - 90;
 
   return (
     <header className="hero" id="top">
@@ -39,11 +29,7 @@ export function Hero() {
             stroke="#C8321E"
             strokeWidth="26"
           />
-          <g id="needle" ref={needleRef}>
-            <polygon points="250,220 243,214 250,58 257,214" fill="#141210" />
-            <circle cx="250" cy="220" r="13" fill="#141210" />
-            <circle cx="250" cy="220" r="5" fill="#EFE9DD" />
-          </g>
+          <Needle deg={needleDeg} />
           <text
             x="34"
             y="246"
@@ -73,7 +59,7 @@ export function Hero() {
       <p className="q">{currentRound.question}</p>
       <p className="sub mono">
         Round {String(currentRound.number).padStart(2, "0")} · Closes in {currentRound.closesIn} ·{" "}
-        {voteCount.toLocaleString()} holder votes
+        {total.toLocaleString()} votes
       </p>
       <a href="#vote" className="scroller mono">
         ↓ Cast yours

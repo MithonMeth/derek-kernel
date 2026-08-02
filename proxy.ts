@@ -33,6 +33,18 @@ export function proxy(request: NextRequest) {
   });
   response.headers.set("Content-Security-Policy", cspHeader);
 
+  // Opaque rate-limit key for the public 1-vote-per-24h check — not an auth
+  // credential, so no need to sign it. See app/api/vote/route.ts.
+  if (!request.cookies.get("taco_voter_id")) {
+    response.cookies.set("taco_voter_id", crypto.randomUUID(), {
+      httpOnly: true,
+      secure: !isDev,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+
   return response;
 }
 

@@ -1,5 +1,7 @@
-// Phase 1: all data hardcoded, mirroring design/taco.html. Phase 2 replaces
-// this with rounds/votes read from Postgres. See SPEC.md.
+// Phase 1 content is hardcoded, mirroring design/taco.html. Voting itself is
+// real (see lib/votes.ts, app/api/vote) — open to anyone, one vote per
+// browser per day, until $TACO bonds and wallet-gated voting takes over.
+// See SPEC.md.
 
 export const currentRound = {
   number: 7,
@@ -7,20 +9,15 @@ export const currentRound = {
   question: "Will Trump back down on striking Iranian energy infrastructure?",
   headline: "Does he chicken out, or does he actually do it?",
   closesIn: "3d 14h",
-  optionA: { label: "Option A", name: "Major taco", votes: 412 },
-  optionB: { label: "Option B", name: "Oh sh!t", votes: 232 },
-};
-
-export const tally = {
-  taco: currentRound.optionA.votes,
-  noTaco: currentRound.optionB.votes,
+  optionA: { label: "Option A", name: "Major taco" },
+  optionB: { label: "Option B", name: "Oh sh!t" },
 };
 
 export const marqueeItems = [
   { label: "Live question", value: "Round 07" },
   { label: "Ceasefire status", value: "collapsed" },
   { label: "Last taco", value: "08 Apr 2026" },
-  { label: "Holders voting", value: "gated, one wallet one vote" },
+  { label: "Voting", value: "open to everyone, 1 per day" },
 ];
 
 export const feedItems = [
@@ -105,14 +102,14 @@ export const roadmapItems = [
     status: "live" as const,
     title: "The gauge is live",
     detail:
-      "Sentiment gauge, news feed and form guide are live. The numbers are hardcoded until Phase 2 ships — see below.",
+      "Voting is real: open to anyone, one vote per browser per day. The gauge, feed and form guide reflect it — only the feed and form guide are still hardcoded.",
   },
   {
     number: "02",
     status: "next" as const,
     title: "Wallet-gated voting, once $TACO bonds",
     detail:
-      "Once the token graduates the bonding curve, real voting opens: connect a wallet, sign in with Solana, vote against a snapshot taken at round open. One wallet, one vote, no balance weighting — same as the demo above, except it counts.",
+      "Once the token graduates the bonding curve, voting moves behind a wallet: connect, sign in with Solana, vote against a snapshot taken at round open. One wallet, one vote, no balance weighting — replacing the one-per-browser rule above with one tied to actually holding the token.",
   },
   {
     number: "03",

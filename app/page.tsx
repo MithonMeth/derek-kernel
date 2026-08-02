@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { CommunitySection } from "@/components/CommunitySection";
 import { FeedSection } from "@/components/FeedSection";
 import { Footer } from "@/components/Footer";
@@ -9,14 +10,18 @@ import { Nav } from "@/components/Nav";
 import { RoadmapSection } from "@/components/RoadmapSection";
 import { SecuritySection } from "@/components/SecuritySection";
 import { VoteSection } from "@/components/VoteSection";
+import { getTally, getVotedChoice } from "@/lib/votes";
 
-export default function Home() {
+export default async function Home() {
+  const voterId = (await cookies()).get("taco_voter_id")?.value;
+  const [tally, votedChoice] = await Promise.all([getTally(), getVotedChoice(voterId)]);
+
   return (
     <>
       <Nav />
-      <Hero />
+      <Hero tally={tally} />
       <Marquee />
-      <VoteSection />
+      <VoteSection tally={tally} votedChoice={votedChoice} />
       <SecuritySection />
       <FeedSection />
       <HistorySection />

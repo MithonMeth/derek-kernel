@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(`https://${siteConfig.canonicalDomain}`),
   title: "$TACO — The Community TACO Indicator",
   description:
-    "A community sentiment indicator for a Solana memecoin. Token holders vote on whether Trump will back down on a live situation.",
+    "A community sentiment indicator for a Solana memecoin. Anyone can vote on whether Trump will back down on a live situation.",
   alternates: { canonical: "/" },
 };
 

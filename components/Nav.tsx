@@ -14,7 +14,7 @@ export function Nav() {
         <a href="#goal">Goal</a>
       </div>
       <a href="#vote" className="mono">
-        Holders only
+        Cast a vote
       </a>
     </nav>
   );

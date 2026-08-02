@@ -14,6 +14,11 @@ export function SecuritySection() {
         tells you what we ask for, what we can&apos;t do, and how to check we&apos;re telling the
         truth.
       </p>
+      <p className="mono sec-note">
+        None of this is live yet. Right now voting doesn&apos;t need a wallet at all — see the
+        Vote section above. Everything below is what happens once $TACO bonds and wallet-gated
+        holder voting takes over.
+      </p>
 
       <div className="flow">
         <div className="fstep reveal">

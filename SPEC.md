@@ -30,6 +30,13 @@ Scheduled job pulling news and Truth Social posts, stored and tagged.
 A minimal authenticated surface for opening/closing rounds, curating the feed and the
 meme wall. Can be a protected route or just direct DB access early on.
 
+**Interim — Public voting, pre-bond**
+Live before Phase 2's wallet auth: anyone can vote, one vote per browser per day via
+an httpOnly cookie (see `proxy.ts`), enforced atomically in Postgres — not the
+`votes`/`snapshot_balances` tables above, a separate `public_votes` table
+(`db/schema.sql`). No wallet, no snapshot, no holder gate. Superseded by Phase 2 once
+$TACO bonds; the roadmap section on the site reflects this as the "Next" milestone.
+
 ---
 
 ## 2. Data model
