@@ -14,14 +14,12 @@ export const siteConfig = {
   // TODO: minimum $TACO balance (at snapshot) required to vote.
   minHolding: process.env.NEXT_PUBLIC_MIN_HOLDING ?? "MIN_HOLDING_TODO",
 
-  // TODO: dedicated tip wallet — must not be a personal wallet.
   devTipAddress:
     process.env.NEXT_PUBLIC_DEV_TIP_ADDRESS ??
-    "SoLDevWa11etAddre55GoesHere000000000000000",
+    "Ez9sasVzu4rUfAAGM135jeRiQpSWv4189soxgtqCdZ4g",
 
-  // TODO: cross-published so members can verify they're the real ones.
-  telegramUrl: process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "#",
-  xUrl: process.env.NEXT_PUBLIC_X_URL ?? "#",
+  telegramUrl:
+    process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "https://t.me/+z7jeL-5hLMY5OWI0",
 
   // TODO: disclosure contact for security.txt (RFC 9116).
   securityContact:

@@ -220,7 +220,8 @@ These are placeholders in the mockup and must be filled before launch:
 
 - Token mint address and `MIN_HOLDING` threshold
 - Dev tip wallet address — use a dedicated wallet, not a personal one
-- Telegram invite link and X handle, both cross-published so they can be verified
+- Telegram invite link, cross-published so it can be verified. No X/Twitter presence —
+  deliberate, not a placeholder gap.
 - Canonical domain, replacing `taco.example`
 - The FCA risk warning. The mockup's text is a marked placeholder and is **not** the
   prescribed wording. Get the exact text from FCA guidance, and get approval from an

@@ -18,9 +18,6 @@ export function CommunitySection() {
         <a className="btn big" href={siteConfig.telegramUrl}>
           Join the Telegram →
         </a>
-        <a className="btn line" href={siteConfig.xUrl}>
-          X / Twitter
-        </a>
       </div>
 
       <div className="wall">

@@ -765,17 +765,6 @@ h2 {
   background: var(--corn);
   color: var(--ink);
 }
-.btn.line {
-  background: none;
-  color: var(--bone);
-  border: 1px solid rgba(239, 233, 221, 0.55);
-  padding: 19px 30px;
-  font-size: 12px;
-}
-.btn.line:hover {
-  background: var(--bone);
-  color: var(--ink);
-}
 .wall {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

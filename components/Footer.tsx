@@ -1,3 +1,5 @@
+import { siteConfig } from "@/lib/site-config";
+
 export function Footer() {
   return (
     <footer>
@@ -5,8 +7,7 @@ export function Footer() {
       <div className="fr mono">
         <span>Solana · SPL</span>
         <a href="#">Contract</a>
-        <a href="#">X / Twitter</a>
-        <a href="#">Telegram</a>
+        <a href={siteConfig.telegramUrl}>Telegram</a>
         <span>© 2026</span>
       </div>
       <p className="warn">
