@@ -10,6 +10,7 @@ export function Loader() {
   const [leaving, setLeaving] = useState(false);
   const [removed, setRemoved] = useState(false);
   const lockedScrollY = useRef(0);
+  const cleanupRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -40,10 +41,11 @@ export function Loader() {
       reduced ? 10 : 70,
     );
 
-    return () => {
+    cleanupRef.current = () => {
       letterTimers.forEach(clearTimeout);
       clearInterval(tick);
     };
+    return () => cleanupRef.current();
   }, []);
 
   useEffect(() => {
@@ -59,8 +61,24 @@ export function Loader() {
 
   if (removed) return null;
 
+  function skip() {
+    if (leaving) return;
+    cleanupRef.current();
+    setLeaving(true);
+  }
+
   return (
-    <div id="loader" className={leaving ? "out" : undefined}>
+    <div
+      id="loader"
+      className={leaving ? "out" : undefined}
+      onClick={skip}
+      role="button"
+      tabIndex={0}
+      aria-label="Skip intro"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") skip();
+      }}
+    >
       <div className="letters" id="lts">
         {LETTERS.map((letter, i) => (
           <span key={letter} className={i < litCount ? "in" : undefined}>
@@ -72,7 +90,7 @@ export function Loader() {
       <div className="pct mono" id="pct">
         {String(pct).padStart(3, "0")}
       </div>
-      <div className="note mono">Calibrating chicken sensor</div>
+      <div className="note mono">Calibrating chicken sensor · tap to skip</div>
     </div>
   );
 }
