@@ -9,6 +9,7 @@ export function Nav() {
         <a href="#security">Security</a>
         <a href="#feed">Feed</a>
         <a href="#history">History</a>
+        <a href="#roadmap">Roadmap</a>
         <a href="#community">Community</a>
         <a href="#goal">Goal</a>
       </div>

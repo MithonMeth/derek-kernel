@@ -6,6 +6,7 @@ import { Hero } from "@/components/Hero";
 import { HistorySection } from "@/components/HistorySection";
 import { Marquee } from "@/components/Marquee";
 import { Nav } from "@/components/Nav";
+import { RoadmapSection } from "@/components/RoadmapSection";
 import { SecuritySection } from "@/components/SecuritySection";
 import { VoteSection } from "@/components/VoteSection";
 
@@ -19,6 +20,7 @@ export default function Home() {
       <SecuritySection />
       <FeedSection />
       <HistorySection />
+      <RoadmapSection />
       <CommunitySection />
       <GoalSection />
       <Footer />
