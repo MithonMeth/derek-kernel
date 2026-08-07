@@ -12,6 +12,12 @@ export interface FinalRuling {
   rulingLine: string;
   rulingText: string;
   flags: string[];
+  /**
+   * Set when the clamp overrode the model's verdict. The prose still argues
+   * the model's case, so a clamped ruling contradicts itself and must never
+   * be published without a human reading it first.
+   */
+  clamped?: string;
 }
 
 const RawRulingSchema = z.object({
@@ -26,15 +32,35 @@ const RawRulingSchema = z.object({
  * Strips anything that could turn a published ruling into a payload: URLs,
  * @mentions, and base58 runs long enough to be a wallet address. The
  * publisher strips again before posting — defence in depth, not redundancy.
+ *
+ * Also strips XML-ish tags. Submissions are wrapped in tags to mark them as
+ * untrusted, and the ruling model has been observed mirroring that back —
+ * closing a `</ruling_text>` it never opened. Scaffolding must not reach the
+ * page or the timeline.
  */
 export function sanitizePublishedText(s: string, maxLen: number): string {
   return s
+    // Attributes included: a real ruling leaked `<parameter name="ruling_text">`,
+    // which a tag pattern without attribute support walks straight past.
+    .replace(/<\/?[A-Za-z_][\w:.-]*(\s+[^<>]*?)?\/?>/g, "")
     .replace(/https?:\/\/\S+/gi, "[link removed]")
     .replace(/\bwww\.\S+/gi, "[link removed]")
     .replace(/@[A-Za-z0-9_]{2,}/g, "[mention removed]")
     .replace(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g, "[address removed]")
+    .replace(/[ \t]+\n/g, "\n")
     .slice(0, maxLen)
     .trim();
+}
+
+/**
+ * The quotable line goes on the share card and the X post, so it has to be
+ * one line. A real ruling returned the closing line followed by a whole
+ * second ruling; take the first line and leave the rest behind.
+ */
+export function sanitizeLine(s: string, maxLen: number): string {
+  const cleaned = sanitizePublishedText(s, maxLen * 6);
+  const first = cleaned.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
+  return first.slice(0, maxLen).trim();
 }
 
 /**
@@ -58,7 +84,7 @@ export function clampRuling(
   }
   const r = parsed.data;
 
-  const rulingLine = sanitizePublishedText(r.ruling_line, 200);
+  const rulingLine = sanitizeLine(r.ruling_line, 200);
   const rulingText = sanitizePublishedText(r.ruling_text, 4000);
   if (!rulingLine || !rulingText) {
     throw new GuardError("ruling text empty after sanitization");
@@ -97,15 +123,18 @@ export function clampRuling(
   const award = Math.round(Math.min(r.award_gbp, ceiling) * 100) / 100;
 
   if (!Number.isFinite(award) || award < ctx.limits.min_award_gbp) {
-    // No defensible award exists (tiny treasury, absurd model number).
-    // Approving £0 or a negative number is worse than rejecting.
+    // No defensible award exists: below the constitutional floor, or the
+    // treasury cannot cover it. The verdict has to change, but the prose
+    // still argues for approval — so mark it clamped and let a human read
+    // the contradiction rather than publishing it.
     return {
       verdict: "rejected",
       awardGbp: null,
       gatesPassed,
       rulingLine,
       rulingText,
-      flags: []
+      flags: [],
+      clamped: `award of ${award} is below the minimum of ${ctx.limits.min_award_gbp}`
     };
   }
 

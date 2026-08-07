@@ -8,7 +8,7 @@ import {
   type ScreeningOutcome,
   type RulingOutcome
 } from "../src/pipeline.js";
-import { GuardError, clampRuling, sanitizePublishedText } from "../src/guards.js";
+import { GuardError, clampRuling, sanitizeLine, sanitizePublishedText } from "../src/guards.js";
 import { costOfCall, recordSpend, underDailyCap } from "../src/spend.js";
 
 const { limits } = loadConstitution(
@@ -78,6 +78,8 @@ describe("ruling pipeline", () => {
     );
     expect(res.ruling.verdict).toBe("rejected");
     expect(res.ruling.awardGbp).toBeNull();
+    // The prose still says "Approved", so this must not publish unread.
+    expect(res.ruling.clamped).toMatch(/below the minimum/);
   });
 
   it("clamps a compromised model that awards a fortune", async () => {
@@ -208,5 +210,27 @@ describe("spend cap", () => {
 describe("sanitizer", () => {
   it("caps length and trims", () => {
     expect(sanitizePublishedText("a".repeat(500), 200)).toHaveLength(200);
+  });
+
+  it("keeps the quotable line to one line", () => {
+    // A real ruling returned the closing line followed by a whole second
+    // ruling, tool scaffolding and all, in the one-line field.
+    const leaked =
+      'Ten rejections isn\'t seniority. It\'s a pattern.\n' +
+      '<parameter name="ruling_text">No thing. A podcast promotes a meetup, which is a circle.';
+    expect(sanitizeLine(leaked, 200)).toBe("Ten rejections isn't seniority. It's a pattern.");
+  });
+
+  it("strips scaffolding tags the model mirrors back", () => {
+    // Observed on a real ruling: the model closed a tag it never opened,
+    // because submissions arrive wrapped in tags marking them untrusted.
+    const out = sanitizePublishedText("Rejected at gate one.\n\nNo object.</ruling_text>", 4000);
+    expect(out).toBe("Rejected at gate one.\n\nNo object.");
+    expect(sanitizePublishedText("<body>hidden</body>", 4000)).toBe("hidden");
+  });
+
+  it("leaves ordinary punctuation and arithmetic alone", () => {
+    const text = "The quote was 4 < 5 and the total > 100. Fine.";
+    expect(sanitizePublishedText(text, 4000)).toBe(text);
   });
 });

@@ -4,6 +4,7 @@
  * embeds the worker is not in play — locally it is just `npm run admin`.
  *
  *   admin status                 counts, spend, stuck dockets
+ *   admin rule <proposals.json>  push proposals through the pipeline, no payment
  *   admin pause | unpause        flip intake without a redeploy
  *   admin approve <docket>       countersign a pending approval, mint claim code
  *   admin claim-paid <code> <tx> record the multisig payout
@@ -11,6 +12,7 @@
  *   admin mark-posted <docket> <postId>
  */
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import {
   Runtime,
   buildPostText,
@@ -95,6 +97,38 @@ async function main(): Promise<void> {
       if (!arg1 || !arg2) throw new Error("usage: admin claim-paid <code> <tx>");
       markClaimPaid(db, arg1, arg2);
       console.log("recorded");
+      break;
+    }
+    case "rule": {
+      if (!arg1) throw new Error("usage: admin rule <proposals.json>");
+      const raw = JSON.parse(readFileSync(arg1, "utf8")) as unknown;
+      const list = (Array.isArray(raw) ? raw : [raw]) as Array<{
+        title: string;
+        amountGbp: number;
+        body: string;
+      }>;
+
+      for (const p of list) {
+        if (!p || typeof p.title !== "string" || typeof p.body !== "string") {
+          throw new Error("each proposal needs title, amountGbp and body");
+        }
+        const r = await runtime.dryRun(p);
+        const award =
+          r.verdict === "approved" ? `£${r.awardGbp}` : r.awardGbp === null ? "£0" : String(r.awardGbp);
+
+        console.log("\n" + "=".repeat(72));
+        console.log(`${r.docketId}  ${r.verdict.toUpperCase()}  ${award}` +
+          `   gates ${r.gatesPassed}/5   cycle ${r.cycle}` +
+          (r.review === "pending_review" ? "   [held for countersign]" : ""));
+        console.log(`${p.title}  ·  requested £${p.amountGbp}`);
+        if (r.flags.length) console.log(`flags: ${r.flags.join(", ")}`);
+        console.log("-".repeat(72));
+        console.log(r.rulingText);
+        console.log("-".repeat(72));
+        console.log(`line: "${r.rulingLine}"`);
+        console.log(`cost: $${r.costUsd.toFixed(4)}`);
+      }
+      console.log(`\n${list.length} ruling(s). Today's spend: $${todaySpendUsd(db).toFixed(4)}`);
       break;
     }
     case "queue": {

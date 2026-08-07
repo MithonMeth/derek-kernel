@@ -76,8 +76,28 @@ npm test             vitest, all packages — the done-when conditions from the 
 npm run build        tsc, all packages
 npm start            API server; embeds the worker loops unless EMBED_WORKER=false
 npm run start:worker standalone worker (only when web and worker share a filesystem)
-npm run admin -- …   status | pause | unpause | approve <docket> | claim-paid <code> <tx> | queue
+npm run admin -- …   status | rule <file> | pause | unpause | approve <docket> |
+                     claim-paid <code> <tx> | queue | mark-posted <docket> <id>
 ```
+
+## The read-through (launch order step 2)
+
+`admin rule <proposals.json>` pushes proposals through the real pipeline with
+no payment, no token and no chain, and prints each ruling. It runs the same
+`judgeDocket` the worker does, so what you read is what production will
+produce. Rulings persist, so they also populate `/log.html` — point `DATA_DIR`
+at a scratch directory unless you want to keep them.
+
+```
+ANTHROPIC_API_KEY=... FAKE_TREASURY_USD=20000 PAUSED=false \
+  npm run admin -- rule proposals/starter.json
+```
+
+`proposals/starter.json` is eight proposals standing in for the
+`test-proposals.json` that never arrived — padding, a clean object, an
+injection attempt with an embedded payout address, a hardship case, and an
+automation request that should hit the constitution's declared weakness.
+Measured cost is about **$0.007 per ruling**.
 
 ## Environment
 
