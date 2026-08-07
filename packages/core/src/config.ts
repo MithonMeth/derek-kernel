@@ -23,7 +23,14 @@ const EnvSchema = z.object({
   SWEEP_DUST_TOKENS: num.pipe(z.number().nonnegative()).default("1" as never),
   RPC_URL: z.string().url().optional(),
   DATABASE_URL: z.string().optional(),
-  X_API_KEY: z.string().optional(),
+  // OAuth 1.0a needs all four. Posting is pay-per-use since Feb 2026:
+  // $0.015 a post, $0.20 if it contains a link — see the publisher.
+  X_CONSUMER_KEY: z.string().optional(),
+  X_CONSUMER_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_ACCESS_SECRET: z.string().optional(),
+  /** Numeric account id; only needed to reconcile after a failed post. */
+  X_USER_ID: z.string().optional(),
   FEE_TARGET_USD: num.pipe(z.number().positive()).default("0.40" as never),
   MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
   MAX_DAILY_API_USD: num.pipe(z.number().nonnegative()).default("25" as never),

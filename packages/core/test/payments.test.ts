@@ -211,10 +211,27 @@ describe("publisher", () => {
       [docketId]
     )) as never;
     const text = buildPostText(row, OPTS);
-    expect(text).toContain(`${OPTS.siteUrl}/r/${docketId}`);
     expect(text).not.toContain("evil.example");
     expect(text).not.toContain("@scammer");
     expect(text).toContain("5,000 $DEREK burned");
+    expect(text).toContain(docketId); // the docket id is how a post is traced
+  });
+
+  it("puts no link in the post, because X charges 13x for one", async () => {
+    // $0.015 a post, $0.20 if it contains a link. The permalink belongs on
+    // the share card image, where it is free. This test exists so nobody
+    // adds one back without meeting the arithmetic.
+    const { db, docketId } = await setup();
+    const row = (await db.row(
+      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+       FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
+       WHERE r.docket_id = $1`,
+      [docketId]
+    )) as never;
+    const text = buildPostText(row, OPTS);
+    expect(text).not.toMatch(/https?:\/\//);
+    expect(text).not.toContain(OPTS.siteUrl);
+    expect(text).not.toMatch(/\b[a-z0-9-]+\.(com|xyz|fun|io|co\.uk)\b/i);
   });
 
   it("a simulated API failure mid-post does not produce a duplicate on retry", async () => {

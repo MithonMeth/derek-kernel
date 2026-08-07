@@ -19,4 +19,5 @@ export * from "./publisher.js";
 export * from "./cycles.js";
 export * from "./sweeper.js";
 export * from "./solana-sweep.js";
+export * from "./x-transport.js";
 export * from "./runtime.js";

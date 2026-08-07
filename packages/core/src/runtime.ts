@@ -25,6 +25,24 @@ import {
   type SweepResult
 } from "./sweeper.js";
 import { SolanaSweepExecutor } from "./solana-sweep.js";
+import { XTransport } from "./x-transport.js";
+
+function buildXTransport(cfg: Config, log: Logger): XTransport | null {
+  const { X_CONSUMER_KEY, X_CONSUMER_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET } = cfg;
+  if (!X_CONSUMER_KEY || !X_CONSUMER_SECRET || !X_ACCESS_TOKEN || !X_ACCESS_SECRET) {
+    return null;
+  }
+  return new XTransport(
+    {
+      consumerKey: X_CONSUMER_KEY,
+      consumerSecret: X_CONSUMER_SECRET,
+      accessToken: X_ACCESS_TOKEN,
+      accessSecret: X_ACCESS_SECRET,
+      userId: cfg.X_USER_ID
+    },
+    log
+  );
+}
 
 export interface JudgeContext {
   capGbp: number;
@@ -109,8 +127,9 @@ export class Runtime {
         : cfg.ANTHROPIC_API_KEY
           ? new AnthropicRulingModel(cfg.ANTHROPIC_API_KEY)
           : null;
-    // No X transport yet: rulings queue for manual posting (`npm run admin queue`).
-    this.transport = o.transport ?? null;
+    // Without all four OAuth values, rulings queue for manual posting
+    // (`npm run admin queue`) rather than failing.
+    this.transport = o.transport !== undefined ? o.transport : buildXTransport(cfg, log);
     this.overrideExecutor = o.executor;
   }
 

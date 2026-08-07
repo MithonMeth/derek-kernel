@@ -43,6 +43,35 @@ packages/api         fastify: /api/*, /r/:docket permalinks, serves the static s
 packages/web         the site (no build step) — `/` and `/log.html`
 ```
 
+## Posting to X
+
+OAuth 1.0a, four config values (`X_CONSUMER_KEY`, `X_CONSUMER_SECRET`,
+`X_ACCESS_TOKEN`, `X_ACCESS_SECRET`). Missing any of them, rulings queue for
+manual posting instead of failing — `npm run admin -- queue` prints them.
+`X_USER_ID` is optional and used only to reconcile after a failed post.
+
+**The post deliberately contains no link.** X moved to pay-per-use in February
+2026 and closed the free and fixed tiers to new signups. It charges **$0.015
+per post, and $0.20 if the text contains a URL**. Against a $0.40 fee, ops
+receives $0.06:
+
+| | post | + model | vs ops income | result |
+|---|---|---|---|---|
+| with a link | $0.200 | $0.207 | $0.060 | **loses $0.147 per ruling** |
+| without | $0.015 | $0.022 | $0.060 | margin $0.038 |
+
+A link costs three and a half times what the whole ops share brings in. The
+permalink belongs on the share card image, where it costs nothing — the card
+design already prints it. There is a test asserting no URL appears in the post
+text so nobody adds one back without redoing that sum.
+
+> **Two things still missing.** The share card images are designed but not
+> generated, so posts currently carry no image and therefore no visible
+> permalink at all — card rendering is the piece that makes the linkless post
+> work. And the transport has never run against the live API: the signing is
+> unit-tested and the HMAC is checked against the RFC 2202 vector, but a real
+> credential smoke test is required before trusting it.
+
 ## Sweeping
 
 Fees land in one throwaway deposit address per docket. Sweeping empties them
