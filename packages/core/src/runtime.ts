@@ -66,7 +66,7 @@ export class Runtime {
   readonly chain: ChainClient | null;
   readonly model: RulingModel | null;
   readonly transport: PostTransport | null;
-  private log: Logger;
+  readonly log: Logger;
   private timers: NodeJS.Timeout[] = [];
 
   private constructor(
