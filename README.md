@@ -84,11 +84,12 @@ npm run admin -- …   status | rule <file> | pause | unpause | approve <docket>
 `admin rule <proposals.json>` pushes proposals through the real pipeline with
 no payment, no token and no chain, and prints each ruling. It runs the same
 `judgeDocket` the worker does, so what you read is what production will
-produce. Rulings persist, so they also populate `/log.html` — point `DATA_DIR`
-at a scratch directory unless you want to keep them.
+produce. Rulings persist, so they also populate `/log.html` — point
+`DATABASE_URL` at a scratch database unless you want to keep them.
 
 ```
 ANTHROPIC_API_KEY=... FAKE_TREASURY_USD=20000 PAUSED=false \
+  DATABASE_URL=postgres://derek:derek@localhost:55432/derek \
   npm run admin -- rule proposals/starter.json
 ```
 
@@ -111,16 +112,31 @@ Price oracle: DexScreener `GET /tokens/v1/{chain}/{mint}` (free, no key,
 FX: frankfurter.dev (free, ECB). Model calls: Haiku 4.5 screening + Sonnet 5
 ruling, ≈$0.01 per submission, capped by `MAX_DAILY_API_USD`.
 
+## Persistence
+
+Postgres, via `DATABASE_URL` (Heroku sets it from the addon). There is no
+local-file fallback on purpose: a dyno's disk does not survive a restart, and
+silently writing a ledger somewhere ephemeral is how a ruling goes missing.
+Boot fails loudly if `DATABASE_URL` is unset.
+
+Tests run against a real Postgres rather than an in-memory stand-in, each
+suite in its own schema:
+
+```
+docker run -d --name derek-pg -e POSTGRES_PASSWORD=derek -e POSTGRES_USER=derek \
+  -e POSTGRES_DB=derek -p 55432:5432 postgres:16-alpine
+npm test          # override with TEST_DATABASE_URL if needed
+```
+
+Millisecond timestamps are `bigint`, parsed back to JS numbers (pg returns
+int8 as a string by default, which would silently break every comparison
+against `Date.now()`). Token amounts stay `text` and are only ever handled as
+`BigInt` — they are the values that genuinely need arbitrary precision.
+
 ## Deploy (Heroku)
 
 `git push heroku main`. One web dyno runs API + worker together
-(`EMBED_WORKER` defaults to true) because dynos do not share a filesystem.
-
-**Known limitation, deliberate for the paused pre-launch phase:** the SQLite
-file lives on the dyno's ephemeral disk, so a restart wipes state. Before
-unpausing with real money in play, move persistence off-dyno (the app already
-has a Heroku Postgres addon to port to) or move hosts. Do not launch on
-ephemeral storage.
+(`EMBED_WORKER` defaults to true), so there is a single writer.
 
 ## Launch order (from the build guide)
 

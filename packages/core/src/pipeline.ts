@@ -58,11 +58,11 @@ export async function runRulingPipeline(
 ): Promise<PipelineResult> {
   const screening = await model.screen(proposal);
   const screenCost = costOfCall(SCREENING_MODEL, screening.usage);
-  recordSpend(db, screenCost);
+  await recordSpend(db, screenCost);
 
   const ruling = await model.rule(proposal, ctx);
   const ruleCost = costOfCall(RULING_MODEL, ruling.usage);
-  recordSpend(db, ruleCost);
+  await recordSpend(db, ruleCost);
 
   const final = clampRuling(ruling.raw, {
     limits: ctx.limits,

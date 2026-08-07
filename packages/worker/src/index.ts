@@ -8,7 +8,7 @@ const constitutionDir = fileURLToPath(new URL("../../../constitution", import.me
 
 let runtime: Runtime;
 try {
-  runtime = new Runtime(cfg, constitutionDir, log);
+  runtime = await Runtime.create(cfg, constitutionDir, log);
 } catch (e) {
   log.fatal({ err: (e as Error).message }, "refusing to start");
   process.exit(1);
@@ -16,7 +16,11 @@ try {
 
 runtime.start();
 log.info(
-  { paused: runtime.isPaused(), model: runtime.model !== null, chain: runtime.chain !== null },
+  {
+    paused: await runtime.isPaused(),
+    model: runtime.model !== null,
+    chain: runtime.chain !== null
+  },
   "worker running"
 );
 

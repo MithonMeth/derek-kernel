@@ -34,7 +34,7 @@ const webRoot = fileURLToPath(new URL("../../web/public", import.meta.url));
 
 let runtime: Runtime;
 try {
-  runtime = new Runtime(cfg, constitutionDir, log);
+  runtime = await Runtime.create(cfg, constitutionDir, log);
 } catch (e) {
   log.fatal({ err: (e as Error).message }, "refusing to start");
   process.exit(1);
@@ -85,23 +85,23 @@ app.post(
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid", message: "Name the thing, give a number, write the proposal." });
     }
-    if (runtime.isPaused()) {
+    if (await runtime.isPaused()) {
       return reply.code(503).send({ error: "paused", message: "Intake is paused. Derek is being commissioned." });
     }
     if (!runtime.deriver) {
       return reply.code(503).send({ error: "paused", message: "Deposits are not configured yet." });
     }
     const hourAgo = Date.now() - 3_600_000;
-    const recent = (
-      db.prepare("SELECT COUNT(*) n FROM dockets WHERE quoted_at > ?").get(hourAgo) as { n: number }
-    ).n;
+    const recent = Number(
+      (await db.row<{ n: string }>("SELECT COUNT(*) AS n FROM dockets WHERE quoted_at > $1", [hourAgo]))!.n
+    );
     if (recent >= cfg.MAX_SUBMISSIONS_PER_HOUR) {
       return reply.code(429).send({ error: "backlog", message: "There is a backlog. Derek reads at his own pace." });
     }
 
     let quote;
     try {
-      quote = runtime.quoteFee();
+      quote = await runtime.quoteFee();
     } catch (e) {
       if (e instanceof SubmissionsPausedError) {
         return reply.code(503).send({ error: "no_price", message: "No defensible price is available. Submissions are paused." });
@@ -111,10 +111,11 @@ app.post(
 
     const proposalId = randomUUID();
     const p = parsed.data;
-    db.prepare(
-      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES (?, ?, ?, ?, ?)"
-    ).run(proposalId, p.title, p.amountGbp, p.body, Date.now());
-    const docket = createDocket(db, runtime.deriver, quote, proposalId);
+    await db.run(
+      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+      [proposalId, p.title, p.amountGbp, p.body, Date.now()]
+    );
+    const docket = await createDocket(db, runtime.deriver, quote, proposalId);
 
     const uiAmount = baseToWholeTokens(quote.feeBase, cfg.TOKEN_DECIMALS).toString();
     const payUri = cfg.TOKEN_MINT_ADDRESS
@@ -138,7 +139,7 @@ app.post(
 
 app.get("/api/dockets/:id", async (req, reply) => {
   const { id } = req.params as { id: string };
-  const docket = db.prepare("SELECT * FROM dockets WHERE id = ?").get(id) as DocketRow | undefined;
+  const docket = await db.row<DocketRow>("SELECT * FROM dockets WHERE id = $1", [id]);
   if (!docket) return reply.code(404).send({ error: "not_found" });
 
   const out: Record<string, unknown> = {
@@ -150,18 +151,16 @@ app.get("/api/dockets/:id", async (req, reply) => {
     paidAt: docket.paid_at
   };
 
-  const ruling = db.prepare("SELECT * FROM rulings WHERE docket_id = ?").get(id) as
-    | {
-        verdict: string;
-        award_gbp: number | null;
-        ruling_line: string;
-        ruling_text: string;
-        gates_passed: number | null;
-        ruled_at: number;
-        review_status: string;
-        flags: string;
-      }
-    | undefined;
+  const ruling = await db.row<{
+    verdict: string;
+    award_gbp: number | null;
+    ruling_line: string;
+    ruling_text: string;
+    gates_passed: number | null;
+    ruled_at: number;
+    review_status: string;
+    flags: string;
+  }>("SELECT * FROM rulings WHERE docket_id = $1", [id]);
   if (ruling) {
     out.ruling = {
       verdict: ruling.verdict,
@@ -172,9 +171,12 @@ app.get("/api/dockets/:id", async (req, reply) => {
       ruledAt: ruling.ruled_at,
       reviewStatus: ruling.review_status
     };
-    const claim = db
-      .prepare("SELECT code, status, award_tokens, expires_at FROM claims WHERE verdict_id = ?")
-      .get(id) as { code: string; status: string; award_tokens: string; expires_at: number } | undefined;
+    const claim = await db.row<{
+      code: string;
+      status: string;
+      award_tokens: string;
+      expires_at: number;
+    }>("SELECT code, status, award_tokens, expires_at FROM claims WHERE verdict_id = $1", [id]);
     if (claim) {
       // The claim code is public by design: published in the ruling, the
       // ledger, and the X post, per the build guide.
@@ -196,18 +198,8 @@ app.get("/api/rulings", async (req) => {
   // homepage ledger does not, and they add up quickly.
   const detail = query.detail === "1";
   const per = 10;
-  const total = (db.prepare("SELECT COUNT(*) n FROM rulings").get() as { n: number }).n;
-  const rows = db
-    .prepare(
-      `SELECT r.docket_id, r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at,
-              r.gates_passed, r.flags, r.review_status, r.cycle,
-              d.fee_tokens, p.title, p.amount_gbp, p.body
-       FROM rulings r
-       JOIN dockets d ON d.id = r.docket_id
-       JOIN proposals p ON p.id = d.proposal_id
-       ORDER BY r.ruled_at DESC LIMIT ? OFFSET ?`
-    )
-    .all(per, (page - 1) * per) as Array<{
+  const total = Number((await db.row<{ n: string }>("SELECT COUNT(*) AS n FROM rulings"))!.n);
+  const rows = await db.rows<{
     docket_id: string;
     verdict: string;
     award_gbp: number | null;
@@ -222,7 +214,16 @@ app.get("/api/rulings", async (req) => {
     title: string;
     amount_gbp: number;
     body: string;
-  }>;
+  }>(
+    `SELECT r.docket_id, r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at,
+            r.gates_passed, r.flags, r.review_status, r.cycle,
+            d.fee_tokens, p.title, p.amount_gbp, p.body
+     FROM rulings r
+     JOIN dockets d ON d.id = r.docket_id
+     JOIN proposals p ON p.id = d.proposal_id
+     ORDER BY r.ruled_at DESC LIMIT $1 OFFSET $2`,
+    [per, (page - 1) * per]
+  );
 
   const burnPct = runtime.constitution.limits.fee_split.burn;
   return {
@@ -259,23 +260,25 @@ app.get("/api/rulings", async (req) => {
 });
 
 app.get("/api/stats", async () => {
-  const rulings = (db.prepare("SELECT COUNT(*) n FROM rulings").get() as { n: number }).n;
-  const approved = (
-    db.prepare("SELECT COUNT(*) n FROM rulings WHERE verdict = 'approved'").get() as { n: number }
-  ).n;
+  const rulings = Number((await db.row<{ n: string }>("SELECT COUNT(*) AS n FROM rulings"))!.n);
+  const approved = Number(
+    (await db.row<{ n: string }>(
+      "SELECT COUNT(*) AS n FROM rulings WHERE verdict = 'approved'"
+    ))!.n
+  );
 
   const burnPct = runtime.constitution.limits.fee_split.burn;
   let burnedBase = 0n;
-  const paidFees = db
-    .prepare("SELECT fee_tokens FROM dockets WHERE paid_at IS NOT NULL")
-    .all() as Array<{ fee_tokens: string }>;
+  const paidFees = await db.rows<{ fee_tokens: string }>(
+    "SELECT fee_tokens FROM dockets WHERE paid_at IS NOT NULL"
+  );
   for (const row of paidFees) {
     burnedBase += (parseBase(row.fee_tokens) * BigInt(Math.round(burnPct * 100))) / 100n;
   }
 
   let fee: { tokens: string; usdTarget: number } | null = null;
   try {
-    const q = runtime.quoteFee();
+    const q = await runtime.quoteFee();
     fee = { tokens: formatWholeTokens(q.feeBase, cfg.TOKEN_DECIMALS), usdTarget: q.feeUsdTarget };
   } catch {
     fee = null;
@@ -289,8 +292,8 @@ app.get("/api/stats", async () => {
     treasuryUsd: await runtime.treasuryUsd().catch(() => null),
     fee,
     paused: runtime.isPaused(),
-    cycle: currentCycle(db),
-    daysSinceApproval: daysSinceLastApproval(db),
+    cycle: await currentCycle(db),
+    daysSinceApproval: await daysSinceLastApproval(db),
     maxAward: runtime.constitution.limits.max_award_gbp,
     minAward: runtime.constitution.limits.min_award_gbp,
     constitution: {
@@ -317,7 +320,7 @@ app.post(
       return reply.code(400).send({ error: "address_mismatch", message: "The two addresses do not match." });
     }
     try {
-      submitClaim(db, code.toLowerCase(), address);
+      await submitClaim(db, code.toLowerCase(), address);
     } catch (e) {
       if (e instanceof UnknownClaimError) return reply.code(404).send({ error: "unknown_code", message: "No such claim code." });
       if (e instanceof AlreadyClaimedError) return reply.code(409).send({ error: "already_claimed", message: "That code has already been used." });
@@ -331,15 +334,20 @@ app.post(
 
 app.get("/r/:id", async (req, reply) => {
   const { id } = req.params as { id: string };
-  const row = db
-    .prepare(
-      `SELECT r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at, p.title, p.amount_gbp
-       FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
-       WHERE r.docket_id = ?`
-    )
-    .get(id) as
-    | { verdict: string; award_gbp: number | null; ruling_line: string; ruling_text: string; ruled_at: number; title: string; amount_gbp: number }
-    | undefined;
+  const row = await db.row<{
+    verdict: string;
+    award_gbp: number | null;
+    ruling_line: string;
+    ruling_text: string;
+    ruled_at: number;
+    title: string;
+    amount_gbp: number;
+  }>(
+    `SELECT r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at, p.title, p.amount_gbp
+     FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
+     WHERE r.docket_id = $1`,
+    [id]
+  );
   if (!row) return reply.code(404).type("text/html").send("<h1>No such docket.</h1>");
 
   const verdict = row.verdict === "approved" ? `APPROVED · £${row.award_gbp}` : row.verdict.toUpperCase();
@@ -363,11 +371,14 @@ app.get("/r/:id", async (req, reply) => {
 </body></html>`);
 });
 
-app.get("/healthz", async () => ({ ok: true, paused: runtime.isPaused() }));
+app.get("/healthz", async () => ({ ok: true, paused: await runtime.isPaused() }));
 
 try {
   await app.listen({ port: cfg.PORT, host: "0.0.0.0" });
-  log.info({ port: cfg.PORT, paused: runtime.isPaused(), embedWorker: cfg.EMBED_WORKER }, "derek api up");
+  log.info(
+    { port: cfg.PORT, paused: await runtime.isPaused(), embedWorker: cfg.EMBED_WORKER },
+    "derek api up"
+  );
 } catch (e) {
   log.fatal({ err: (e as Error).message }, "listen failed");
   process.exit(1);

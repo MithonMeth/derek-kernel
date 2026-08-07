@@ -28,7 +28,7 @@ import {
 
 const log = createLogger("derek-admin");
 const cfg = loadConfig();
-const runtime = new Runtime(
+const runtime = await Runtime.create(
   cfg,
   fileURLToPath(new URL("../../../constitution", import.meta.url)),
   log
@@ -39,40 +39,40 @@ const [, , command, arg1, arg2] = process.argv;
 async function main(): Promise<void> {
   switch (command) {
     case "status": {
-      const dockets = db
-        .prepare("SELECT status, COUNT(*) n FROM dockets GROUP BY status")
-        .all() as Array<{ status: string; n: number }>;
-      const stuck = db
-        .prepare("SELECT id FROM dockets WHERE status = 'paid' AND judge_attempts >= 3")
-        .all() as Array<{ id: string }>;
-      const pending = db
-        .prepare("SELECT docket_id FROM rulings WHERE review_status = 'pending_review'")
-        .all() as Array<{ docket_id: string }>;
-      console.log("paused:", runtime.isPaused());
+      const dockets = await db.rows<{ status: string; n: string }>(
+        "SELECT status, COUNT(*) AS n FROM dockets GROUP BY status"
+      );
+      const stuck = await db.rows<{ id: string }>(
+        "SELECT id FROM dockets WHERE status = 'paid' AND judge_attempts >= 3"
+      );
+      const pending = await db.rows<{ docket_id: string }>(
+        "SELECT docket_id FROM rulings WHERE review_status = 'pending_review'"
+      );
+      console.log("cycle:", await currentCycle(db));
+      console.log("paused:", await runtime.isPaused());
       console.log("dockets:", dockets.map((d) => `${d.status}=${d.n}`).join(" ") || "none");
-      console.log("today's API spend: $" + todaySpendUsd(db).toFixed(4));
+      console.log("today's API spend: $" + (await todaySpendUsd(db)).toFixed(4));
       console.log("stuck (needs human):", stuck.map((s) => s.id).join(" ") || "none");
       console.log("pending approval:", pending.map((p) => p.docket_id).join(" ") || "none");
       break;
     }
     case "pause":
     case "unpause": {
-      runtime.setPaused(command === "pause");
-      console.log("paused:", runtime.isPaused());
+      await runtime.setPaused(command === "pause");
+      console.log("paused:", await runtime.isPaused());
       break;
     }
     case "approve": {
       if (!arg1) throw new Error("usage: admin approve <docketId>");
-      const ruling = db
-        .prepare(
-          "SELECT award_gbp, cycle FROM rulings WHERE docket_id = ? AND verdict = 'approved' AND review_status = 'pending_review'"
-        )
-        .get(arg1) as { award_gbp: number; cycle: number | null } | undefined;
+      const ruling = await db.row<{ award_gbp: number; cycle: number | null }>(
+        "SELECT award_gbp, cycle FROM rulings WHERE docket_id = $1 AND verdict = 'approved' AND review_status = 'pending_review'",
+        [arg1]
+      );
       if (!ruling) throw new Error(`${arg1} has no approval pending review`);
       // The constitution's one-approval-per-cycle limit binds the operator
       // too, or countersigning two held rulings would quietly break it.
-      const rulingCycle = ruling.cycle ?? currentCycle(db);
-      if (!cycleSlotFree(db, rulingCycle, runtime.constitution.limits.approvals_per_cycle)) {
+      const rulingCycle = ruling.cycle ?? (await currentCycle(db));
+      if (!(await cycleSlotFree(db, rulingCycle, runtime.constitution.limits.approvals_per_cycle))) {
         throw new Error(
           `cycle ${rulingCycle} has already issued its approval; this one cannot be countersigned into it`
         );
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
       const price = runtime.oracle.current();
       if (!price) throw new Error("no live price — cannot lock the token amount; try again when the oracle has a tick");
       const usdPerGbp = await getUsdPerGbp(db, cfg.FX_FALLBACK_GBP_USD);
-      const claim = createClaim(
+      const claim = await createClaim(
         db,
         arg1,
         ruling.award_gbp,
@@ -89,13 +89,13 @@ async function main(): Promise<void> {
         cfg.TOKEN_DECIMALS,
         cfg.CLAIM_EXPIRY_DAYS
       );
-      db.prepare("UPDATE rulings SET review_status = 'confirmed' WHERE docket_id = ?").run(arg1);
+      await db.run("UPDATE rulings SET review_status = 'confirmed' WHERE docket_id = $1", [arg1]);
       console.log(`countersigned ${arg1}; claim code: ${claim.code}`);
       break;
     }
     case "claim-paid": {
       if (!arg1 || !arg2) throw new Error("usage: admin claim-paid <code> <tx>");
-      markClaimPaid(db, arg1, arg2);
+      await markClaimPaid(db, arg1, arg2);
       console.log("recorded");
       break;
     }
@@ -128,17 +128,17 @@ async function main(): Promise<void> {
         console.log(`line: "${r.rulingLine}"`);
         console.log(`cost: $${r.costUsd.toFixed(4)}`);
       }
-      console.log(`\n${list.length} ruling(s). Today's spend: $${todaySpendUsd(db).toFixed(4)}`);
+      console.log(
+        `\n${list.length} ruling(s). Today's spend: $${(await todaySpendUsd(db)).toFixed(4)}`
+      );
       break;
     }
     case "queue": {
-      const rows = db
-        .prepare(
-          `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
-           FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
-           WHERE r.post_status = 'queued_manual'`
-        )
-        .all() as never[];
+      const rows = (await db.rows(
+        `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+         FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
+         WHERE r.post_status = 'queued_manual'`
+      )) as never[];
       if (rows.length === 0) console.log("queue empty");
       for (const row of rows) {
         console.log("----");
@@ -154,7 +154,10 @@ async function main(): Promise<void> {
     }
     case "mark-posted": {
       if (!arg1 || !arg2) throw new Error("usage: admin mark-posted <docketId> <postId>");
-      db.prepare("UPDATE rulings SET post_status = 'posted', post_id = ? WHERE docket_id = ?").run(arg2, arg1);
+      await db.run("UPDATE rulings SET post_status = 'posted', post_id = $1 WHERE docket_id = $2", [
+        arg2,
+        arg1
+      ]);
       console.log("recorded");
       break;
     }

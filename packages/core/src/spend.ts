@@ -33,23 +33,29 @@ function today(now: number): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-export function recordSpend(db: DB, costUsd: number, now: number = Date.now()): void {
-  db.prepare(
-    `INSERT INTO spend_log (day, api_cost_usd, calls) VALUES (?, ?, 1)
-     ON CONFLICT(day) DO UPDATE SET
-       api_cost_usd = api_cost_usd + excluded.api_cost_usd,
-       calls = calls + 1`
-  ).run(today(now), costUsd);
+export async function recordSpend(db: DB, costUsd: number, now: number = Date.now()): Promise<void> {
+  await db.run(
+    `INSERT INTO spend_log (day, api_cost_usd, calls) VALUES ($1, $2, 1)
+     ON CONFLICT (day) DO UPDATE SET
+       api_cost_usd = spend_log.api_cost_usd + excluded.api_cost_usd,
+       calls = spend_log.calls + 1`,
+    [today(now), costUsd]
+  );
 }
 
-export function todaySpendUsd(db: DB, now: number = Date.now()): number {
-  const row = db.prepare("SELECT api_cost_usd FROM spend_log WHERE day = ?").get(today(now)) as
-    | { api_cost_usd: number }
-    | undefined;
+export async function todaySpendUsd(db: DB, now: number = Date.now()): Promise<number> {
+  const row = await db.row<{ api_cost_usd: number }>(
+    "SELECT api_cost_usd FROM spend_log WHERE day = $1",
+    [today(now)]
+  );
   return row?.api_cost_usd ?? 0;
 }
 
-/** You cannot cap what you don't measure — and the worker checks this before every cycle. */
-export function underDailyCap(db: DB, maxDailyUsd: number, now: number = Date.now()): boolean {
-  return todaySpendUsd(db, now) < maxDailyUsd;
+/** You cannot cap what you don't measure — the worker checks this every cycle. */
+export async function underDailyCap(
+  db: DB,
+  maxDailyUsd: number,
+  now: number = Date.now()
+): Promise<boolean> {
+  return (await todaySpendUsd(db, now)) < maxDailyUsd;
 }

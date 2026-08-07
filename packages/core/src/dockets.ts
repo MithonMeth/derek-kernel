@@ -23,37 +23,47 @@ export interface DocketRow {
   status: string;
 }
 
-export function createDocket(
+export async function createDocket(
   db: DB,
   deriver: AddressDeriver,
   quote: FeeQuote,
   proposalId: string,
   now: number = Date.now()
-): DocketRow {
-  const id = `D-${nextDocketNumber(db)}`;
-  const index = allocateDerivationIndex(db);
+): Promise<DocketRow> {
+  const id = `D-${await nextDocketNumber(db)}`;
+  const index = await allocateDerivationIndex(db);
   const address = deriver.deriveAddress(index);
-  db.prepare(
+  await db.run(
     `INSERT INTO dockets (id, proposal_id, deposit_address, derivation_index, fee_tokens,
        fee_usd_target, price_usd_at_quote, quoted_at, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')`
-  ).run(id, proposalId, address, index, quote.feeBase.toString(), quote.feeUsdTarget, quote.priceUsd, now);
-  return getDocket(db, id)!;
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_payment')`,
+    [
+      id,
+      proposalId,
+      address,
+      index,
+      quote.feeBase.toString(),
+      quote.feeUsdTarget,
+      quote.priceUsd,
+      now
+    ]
+  );
+  return (await getDocket(db, id))!;
 }
 
-export function getDocket(db: DB, id: string): DocketRow | null {
-  return (db.prepare("SELECT * FROM dockets WHERE id = ?").get(id) as DocketRow | undefined) ?? null;
+export async function getDocket(db: DB, id: string): Promise<DocketRow | null> {
+  return db.row<DocketRow>("SELECT * FROM dockets WHERE id = $1", [id]);
 }
 
 /** Expire unpaid dockets past the window, freeing their derivation index. */
-export function expireDockets(db: DB, now: number = Date.now()): number {
-  const stale = db
-    .prepare("SELECT id, derivation_index FROM dockets WHERE status = 'awaiting_payment' AND quoted_at < ?")
-    .all(now - DOCKET_EXPIRY_MS) as Array<{ id: string; derivation_index: number }>;
-  for (const d of stale) {
-    db.prepare("UPDATE dockets SET status = 'expired' WHERE id = ? AND status = 'awaiting_payment'").run(d.id);
-    freeDerivationIndex(db, d.derivation_index);
-  }
+export async function expireDockets(db: DB, now: number = Date.now()): Promise<number> {
+  const stale = await db.rows<{ id: string; derivation_index: number }>(
+    `UPDATE dockets SET status = 'expired'
+     WHERE status = 'awaiting_payment' AND quoted_at < $1
+     RETURNING id, derivation_index`,
+    [now - DOCKET_EXPIRY_MS]
+  );
+  for (const d of stale) await freeDerivationIndex(db, d.derivation_index);
   return stale.length;
 }
 
@@ -70,10 +80,8 @@ export async function watchPayments(
   now: number = Date.now(),
   log?: Logger
 ): Promise<void> {
-  expireDockets(db, now);
-  const open = db
-    .prepare("SELECT * FROM dockets WHERE status = 'awaiting_payment'")
-    .all() as DocketRow[];
+  await expireDockets(db, now);
+  const open = await db.rows<DocketRow>("SELECT * FROM dockets WHERE status = 'awaiting_payment'");
 
   for (const docket of open) {
     let balance: bigint;
@@ -90,9 +98,10 @@ export async function watchPayments(
         log?.warn({ docket: docket.id }, "underpayment within tolerance accepted");
       }
       const tx = await chain.getLatestSignature(docket.deposit_address).catch(() => null);
-      db.prepare(
-        "UPDATE dockets SET status = 'paid', paid_at = ?, paid_tx = ? WHERE id = ? AND status = 'awaiting_payment'"
-      ).run(now, tx, docket.id);
+      await db.run(
+        "UPDATE dockets SET status = 'paid', paid_at = $1, paid_tx = $2 WHERE id = $3 AND status = 'awaiting_payment'",
+        [now, tx, docket.id]
+      );
     }
   }
 }

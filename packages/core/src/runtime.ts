@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import type { Config } from "./config.js";
 import type { Logger } from "./logger.js";
 import { openDb, kvGet, kvSet, nextDocketNumber, type DB } from "./db.js";
@@ -30,6 +29,21 @@ export interface JudgedRuling extends FinalRuling {
   costUsd: number;
 }
 
+/**
+ * Heroku injects DATABASE_URL. There is no local-file fallback on purpose:
+ * a dyno's disk does not survive a restart, and silently writing state
+ * somewhere ephemeral is how a ledger loses a ruling.
+ */
+function requireDatabaseUrl(cfg: Config): string {
+  if (!cfg.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL is not set. Provision Postgres (heroku addons:create heroku-postgresql) " +
+        "or point it at a local instance."
+    );
+  }
+  return cfg.DATABASE_URL;
+}
+
 export interface RuntimeOverrides {
   db?: DB;
   model?: RulingModel | null;
@@ -55,36 +69,19 @@ export class Runtime {
   private log: Logger;
   private timers: NodeJS.Timeout[] = [];
 
-  constructor(cfg: Config, constitutionDir: string, log: Logger, o: RuntimeOverrides = {}) {
+  private constructor(
+    cfg: Config,
+    constitution: Constitution,
+    db: DB,
+    oracle: Oracle,
+    log: Logger,
+    o: RuntimeOverrides
+  ) {
     this.cfg = cfg;
+    this.constitution = constitution;
+    this.db = db;
+    this.oracle = oracle;
     this.log = log;
-    // Constitution first: an unreadable or inconsistent constitution
-    // refuses boot before anything else starts.
-    this.constitution = loadConstitution(constitutionDir);
-    log.info(
-      { commit: this.constitution.commit, sha256: this.constitution.sha256 },
-      "constitution loaded"
-    );
-
-    this.db = o.db ?? openDb(join(cfg.DATA_DIR, "derek.db"));
-
-    const fetchers =
-      cfg.TOKEN_MINT_ADDRESS !== undefined
-        ? [
-            dexScreenerFetcher(cfg.CHAIN_ID, cfg.TOKEN_MINT_ADDRESS),
-            dexPaprikaFetcher(cfg.CHAIN_ID, cfg.TOKEN_MINT_ADDRESS)
-          ]
-        : [];
-    this.oracle = new Oracle(
-      this.db,
-      {
-        feeTargetUsd: cfg.FEE_TARGET_USD,
-        minLiquidityUsd: cfg.MIN_LIQUIDITY_USD,
-        tokenDecimals: cfg.TOKEN_DECIMALS
-      },
-      fetchers,
-      log
-    );
 
     this.chain =
       o.chain !== undefined ? o.chain : cfg.RPC_URL ? new SolanaRpcClient(cfg.RPC_URL) : null;
@@ -104,17 +101,54 @@ export class Runtime {
     this.transport = o.transport ?? null;
   }
 
+  static async create(
+    cfg: Config,
+    constitutionDir: string,
+    log: Logger,
+    o: RuntimeOverrides = {}
+  ): Promise<Runtime> {
+    // Constitution first: an unreadable or inconsistent constitution
+    // refuses boot before anything else starts.
+    const constitution = loadConstitution(constitutionDir);
+    log.info(
+      { commit: constitution.commit, sha256: constitution.sha256 },
+      "constitution loaded"
+    );
+
+    const db = o.db ?? (await openDb(requireDatabaseUrl(cfg)));
+
+    const fetchers =
+      cfg.TOKEN_MINT_ADDRESS !== undefined
+        ? [
+            dexScreenerFetcher(cfg.CHAIN_ID, cfg.TOKEN_MINT_ADDRESS),
+            dexPaprikaFetcher(cfg.CHAIN_ID, cfg.TOKEN_MINT_ADDRESS)
+          ]
+        : [];
+    const oracle = await Oracle.create(
+      db,
+      {
+        feeTargetUsd: cfg.FEE_TARGET_USD,
+        minLiquidityUsd: cfg.MIN_LIQUIDITY_USD,
+        tokenDecimals: cfg.TOKEN_DECIMALS
+      },
+      fetchers,
+      log
+    );
+
+    return new Runtime(cfg, constitution, db, oracle, log, o);
+  }
+
   /** Runtime kill switch: the db flag wins over the env default, so `admin unpause` needs no redeploy. */
-  isPaused(): boolean {
-    const flag = kvGet(this.db, "paused");
+  async isPaused(): Promise<boolean> {
+    const flag = await kvGet(this.db, "paused");
     return flag !== null ? flag === "true" : this.cfg.PAUSED;
   }
 
-  setPaused(paused: boolean): void {
-    kvSet(this.db, "paused", String(paused));
+  async setPaused(paused: boolean): Promise<void> {
+    await kvSet(this.db, "paused", String(paused));
   }
 
-  quoteFee(now?: number): FeeQuote {
+  async quoteFee(now?: number): Promise<FeeQuote> {
     return this.oracle.quoteFee(now);
   }
 
@@ -132,8 +166,8 @@ export class Runtime {
   }
 
   async watchCycle(now: number = Date.now()): Promise<void> {
-    expireDockets(this.db, now);
-    expireClaims(this.db, now);
+    await expireDockets(this.db, now);
+    await expireClaims(this.db, now);
     if (this.chain && this.cfg.TOKEN_MINT_ADDRESS) {
       await watchPayments(this.db, this.chain, this.cfg.TOKEN_MINT_ADDRESS, now, this.log);
     }
@@ -172,11 +206,15 @@ export class Runtime {
     );
 
     const approved = res.ruling.verdict === "approved";
-    const cycle = currentCycle(this.db, now);
+    const cycle = await currentCycle(this.db, now);
     // Constitution s7: one approval per cycle. A second approvable proposal
     // is held for countersign rather than rewritten into a rejection — the
     // ruling stands, the money just does not move today.
-    const slotFree = cycleSlotFree(this.db, cycle, this.constitution.limits.approvals_per_cycle);
+    const slotFree = await cycleSlotFree(
+      this.db,
+      cycle,
+      this.constitution.limits.approvals_per_cycle
+    );
     // Approvals also need a human countersign until AUTO_APPROVE_UNFLAGGED
     // flips, and always need a live price to lock the token amount.
     // A clamped ruling contradicts itself — the verdict was overridden but
@@ -199,13 +237,11 @@ export class Runtime {
       );
     }
 
-    this.db
-      .prepare(
-        `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, flags,
-           gates_passed, model, ruled_at, review_status, cycle)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
+    await this.db.run(
+      `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, flags,
+         gates_passed, model, ruled_at, review_status, cycle)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
         item.id,
         res.ruling.verdict,
         res.ruling.awardGbp,
@@ -217,11 +253,12 @@ export class Runtime {
         now,
         review,
         cycle
-      );
-    this.db.prepare("UPDATE dockets SET status = 'judged' WHERE id = ?").run(item.id);
+      ]
+    );
+    await this.db.run("UPDATE dockets SET status = 'judged' WHERE id = $1", [item.id]);
 
     if (approved && review === "auto" && ctx.price) {
-      createClaim(
+      await createClaim(
         this.db,
         item.id,
         res.ruling.awardGbp!,
@@ -241,8 +278,8 @@ export class Runtime {
 
   /** Judge paid dockets, respecting the pause flag and the daily API cap. */
   async rulingCycle(now: number = Date.now()): Promise<void> {
-    if (this.isPaused() || !this.model) return;
-    if (!underDailyCap(this.db, this.cfg.MAX_DAILY_API_USD, now)) {
+    if ((await this.isPaused()) || !this.model) return;
+    if (!(await underDailyCap(this.db, this.cfg.MAX_DAILY_API_USD, now))) {
       this.log.warn("daily API cap reached — paid dockets stay queued until tomorrow");
       return;
     }
@@ -253,21 +290,27 @@ export class Runtime {
       return;
     }
 
-    const queue = this.db
-      .prepare(
-        `SELECT d.id, p.title, p.amount_gbp, p.body
-         FROM dockets d JOIN proposals p ON p.id = d.proposal_id
-         WHERE d.status = 'paid' AND d.judge_attempts < 3
-         ORDER BY d.paid_at LIMIT 5`
-      )
-      .all() as Array<{ id: string; title: string; amount_gbp: number; body: string }>;
+    const queue = await this.db.rows<{
+      id: string;
+      title: string;
+      amount_gbp: number;
+      body: string;
+    }>(
+      `SELECT d.id, p.title, p.amount_gbp, p.body
+       FROM dockets d JOIN proposals p ON p.id = d.proposal_id
+       WHERE d.status = 'paid' AND d.judge_attempts < 3
+       ORDER BY d.paid_at LIMIT 5`
+    );
 
     for (const item of queue) {
-      if (!underDailyCap(this.db, this.cfg.MAX_DAILY_API_USD, now)) return;
+      if (!(await underDailyCap(this.db, this.cfg.MAX_DAILY_API_USD, now))) return;
       try {
         await this.judgeDocket(item, ctx, now);
       } catch (e) {
-        this.db.prepare("UPDATE dockets SET judge_attempts = judge_attempts + 1 WHERE id = ?").run(item.id);
+        await this.db.run(
+          "UPDATE dockets SET judge_attempts = judge_attempts + 1 WHERE id = $1",
+          [item.id]
+        );
         this.log.error({ docket: item.id, err: (e as Error).message }, "pipeline failed");
       }
     }
@@ -289,18 +332,18 @@ export class Runtime {
       throw new Error("no treasury valuation — set FAKE_TREASURY_USD for a dry run");
     }
 
-    const id = `D-${nextDocketNumber(this.db)}`;
+    const id = `D-${await nextDocketNumber(this.db)}`;
     const proposalId = `dry-${id}`;
-    this.db
-      .prepare("INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run(proposalId, proposal.title, proposal.amountGbp, proposal.body, now);
-    this.db
-      .prepare(
-        `INSERT INTO dockets (id, proposal_id, deposit_address, derivation_index, fee_tokens,
-           fee_usd_target, price_usd_at_quote, quoted_at, paid_at, status)
-         VALUES (?, ?, 'dry-run', -1, '0', 0, 0, ?, ?, 'paid')`
-      )
-      .run(id, proposalId, now, now);
+    await this.db.run(
+      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+      [proposalId, proposal.title, proposal.amountGbp, proposal.body, now]
+    );
+    await this.db.run(
+      `INSERT INTO dockets (id, proposal_id, deposit_address, derivation_index, fee_tokens,
+         fee_usd_target, price_usd_at_quote, quoted_at, paid_at, status)
+       VALUES ($1, $2, 'dry-run', -1, '0', 0, 0, $3, $4, 'paid')`,
+      [id, proposalId, now, now]
+    );
 
     return this.judgeDocket(
       { id, title: proposal.title, amount_gbp: proposal.amountGbp, body: proposal.body },
@@ -310,11 +353,9 @@ export class Runtime {
   }
 
   async publishCycle(): Promise<void> {
-    const pending = this.db
-      .prepare(
-        "SELECT docket_id FROM rulings WHERE post_status = 'unposted' AND review_status != 'pending_review' LIMIT 5"
-      )
-      .all() as Array<{ docket_id: string }>;
+    const pending = await this.db.rows<{ docket_id: string }>(
+      "SELECT docket_id FROM rulings WHERE post_status = 'unposted' AND review_status <> 'pending_review' LIMIT 5"
+    );
     for (const row of pending) {
       await publishRuling(
         this.db,

@@ -1,5 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { openDb } from "../src/db.js";
+import { afterAll, describe, expect, it } from "vitest";
 import { loadConstitution } from "../src/constitution.js";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,7 +8,10 @@ import {
   type RulingOutcome
 } from "../src/pipeline.js";
 import { GuardError, clampRuling, sanitizeLine, sanitizePublishedText } from "../src/guards.js";
-import { costOfCall, recordSpend, underDailyCap } from "../src/spend.js";
+import { costOfCall, underDailyCap } from "../src/spend.js";
+import { closeTestDbs, testDb } from "./helpers.js";
+
+afterAll(closeTestDbs);
 
 const { limits } = loadConstitution(
   fileURLToPath(new URL("../../../constitution", import.meta.url))
@@ -39,7 +41,7 @@ const CTX = { constitutionText: "constitution", limits, capGbp: 500 };
 
 describe("ruling pipeline", () => {
   it("passes a sane approval through with the award intact", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       {},
       {
@@ -57,7 +59,7 @@ describe("ruling pipeline", () => {
   });
 
   it("approves the kettle the constitution's own register approves", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     // The floor is 1, so a small real object is fundable. This is the case
     // the register in section 6 and the decision log both turn on.
     const model = stubModel(
@@ -82,7 +84,7 @@ describe("ruling pipeline", () => {
   });
 
   it("refuses an award below the constitution's minimum", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       {},
       {
@@ -106,7 +108,7 @@ describe("ruling pipeline", () => {
   });
 
   it("clamps a compromised model that awards a fortune", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       {},
       {
@@ -123,7 +125,7 @@ describe("ruling pipeline", () => {
   });
 
   it("a compromised ruling model cannot approve a flagged submission", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       { flags: ["injection_attempt"], reason: "claims to be Amendment 7" },
       {
@@ -140,7 +142,7 @@ describe("ruling pipeline", () => {
   });
 
   it("strips URLs, mentions, and wallet addresses from published text", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       {},
       {
@@ -199,7 +201,7 @@ describe("ruling pipeline", () => {
 
 describe("spend cap", () => {
   it("records pipeline cost and trips the daily cap", async () => {
-    const db = openDb(":memory:");
+    const db = await testDb();
     const model = stubModel(
       {},
       {
@@ -210,12 +212,12 @@ describe("spend cap", () => {
         ruling_text: "No. Come back with a quote."
       }
     );
-    expect(underDailyCap(db, 0.01)).toBe(true);
+    expect(await underDailyCap(db, 0.01)).toBe(true);
     await runRulingPipeline(db, model, PROPOSAL, CTX);
     // With MAX_DAILY_API_USD=0.01 the first submission's cost trips the cap,
     // so the second queues instead of calling the API — Step 5's done-when.
-    expect(underDailyCap(db, 0.01)).toBe(false);
-    expect(underDailyCap(db, 25)).toBe(true);
+    expect(await underDailyCap(db, 0.01)).toBe(false);
+    expect(await underDailyCap(db, 25)).toBe(true);
   });
 
   it("prices calls per model with cache accounting", () => {

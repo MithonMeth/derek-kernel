@@ -1,154 +1,249 @@
-import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { Pool, types, type PoolClient } from "pg";
 
-export type DB = Database.Database;
+/**
+ * int8 comes back from pg as a string to avoid precision loss. Every bigint
+ * column here is a millisecond timestamp or a small counter, all far inside
+ * Number.MAX_SAFE_INTEGER. Token amounts are the values that genuinely need
+ * arbitrary precision, and those are stored as text and never parsed here.
+ */
+types.setTypeParser(types.builtins.INT8, (v) => Number(v));
 
-const MIGRATIONS: string[] = [
-  `
-  CREATE TABLE proposals (
-    id          TEXT PRIMARY KEY,
-    title       TEXT NOT NULL,
-    amount_gbp  REAL NOT NULL,
-    body        TEXT NOT NULL,
-    created_at  INTEGER NOT NULL
-  );
+export interface DB {
+  rows<T>(sql: string, params?: unknown[]): Promise<T[]>;
+  row<T>(sql: string, params?: unknown[]): Promise<T | null>;
+  /** Returns the number of rows affected. */
+  run(sql: string, params?: unknown[]): Promise<number>;
+  tx<T>(fn: (db: DB) => Promise<T>): Promise<T>;
+  close(): Promise<void>;
+}
 
-  CREATE TABLE dockets (
-    id               TEXT PRIMARY KEY,            -- 'D-1205'
-    proposal_id      TEXT NOT NULL REFERENCES proposals(id),
-    deposit_address  TEXT NOT NULL,
-    derivation_index INTEGER NOT NULL,
-    fee_tokens       TEXT NOT NULL,               -- base units, string, never a JS number
-    fee_usd_target   REAL NOT NULL,
-    price_usd_at_quote REAL NOT NULL,
-    quoted_at        INTEGER NOT NULL,
-    paid_at          INTEGER,
-    paid_tx          TEXT,
-    swept_at         INTEGER,
-    judge_attempts   INTEGER NOT NULL DEFAULT 0,  -- failed pipeline runs; >=3 needs a human
-    status           TEXT NOT NULL                -- awaiting_payment | paid | expired | judged
-  );
-  CREATE INDEX dockets_status ON dockets(status);
+const SCHEMA = `
+CREATE TABLE proposals (
+  id          text PRIMARY KEY,
+  title       text NOT NULL,
+  amount_gbp  double precision NOT NULL,
+  body        text NOT NULL,
+  created_at  bigint NOT NULL
+);
 
-  CREATE TABLE rulings (
-    docket_id     TEXT PRIMARY KEY REFERENCES dockets(id),
-    verdict       TEXT NOT NULL,                  -- approved | rejected | void
-    award_gbp     REAL,                           -- null unless approved
-    ruling_line   TEXT NOT NULL,
-    ruling_text   TEXT NOT NULL,
-    flags         TEXT NOT NULL DEFAULT '[]',     -- JSON array of screening flags
-    gates_passed  INTEGER,
-    model         TEXT NOT NULL,
-    ruled_at      INTEGER NOT NULL,
-    review_status TEXT NOT NULL,                  -- auto | pending_review | confirmed
-    post_status   TEXT NOT NULL DEFAULT 'unposted', -- unposted | posting | posted | queued_manual
-    post_id       TEXT
-  );
-  CREATE INDEX rulings_ruled_at ON rulings(ruled_at);
+CREATE TABLE dockets (
+  id                 text PRIMARY KEY,
+  proposal_id        text NOT NULL REFERENCES proposals(id),
+  deposit_address    text NOT NULL,
+  derivation_index   integer NOT NULL,
+  fee_tokens         text NOT NULL,          -- base units, never a float
+  fee_usd_target     double precision NOT NULL,
+  price_usd_at_quote double precision NOT NULL,
+  quoted_at          bigint NOT NULL,
+  paid_at            bigint,
+  paid_tx            text,
+  swept_at           bigint,
+  judge_attempts     integer NOT NULL DEFAULT 0,
+  status             text NOT NULL           -- awaiting_payment|paid|expired|judged
+);
+CREATE INDEX dockets_status ON dockets(status);
 
-  CREATE TABLE claims (
-    code           TEXT PRIMARY KEY,              -- 32 hex chars, single use
-    verdict_id     TEXT NOT NULL REFERENCES rulings(docket_id),
-    award_gbp      REAL NOT NULL,
-    award_tokens   TEXT NOT NULL,                 -- base units, locked at ruling time
-    expires_at     INTEGER NOT NULL,
-    claimed_at     INTEGER,
-    payout_address TEXT,
-    payout_tx      TEXT,
-    status         TEXT NOT NULL                  -- open | claimed | paid | expired
-  );
+CREATE TABLE rulings (
+  docket_id     text PRIMARY KEY REFERENCES dockets(id),
+  verdict       text NOT NULL,               -- approved|rejected|void
+  award_gbp     double precision,
+  ruling_line   text NOT NULL,
+  ruling_text   text NOT NULL,
+  flags         text NOT NULL DEFAULT '[]',
+  gates_passed  integer,
+  model         text NOT NULL,
+  ruled_at      bigint NOT NULL,
+  review_status text NOT NULL,               -- auto|pending_review|confirmed
+  post_status   text NOT NULL DEFAULT 'unposted',
+  post_id       text,
+  cycle         integer
+);
+CREATE INDEX rulings_ruled_at ON rulings(ruled_at);
+CREATE INDEX rulings_cycle ON rulings(cycle, verdict);
 
-  CREATE TABLE price_ticks (
-    observed_at   INTEGER PRIMARY KEY,
-    price_usd     REAL NOT NULL,
-    liquidity_usd REAL NOT NULL,
-    source        TEXT NOT NULL
-  );
+CREATE TABLE claims (
+  code           text PRIMARY KEY,
+  verdict_id     text NOT NULL REFERENCES rulings(docket_id),
+  award_gbp      double precision NOT NULL,
+  award_tokens   text NOT NULL,              -- locked at ruling time
+  expires_at     bigint NOT NULL,
+  claimed_at     bigint,
+  payout_address text,
+  payout_tx      text,
+  status         text NOT NULL               -- open|claimed|paid|expired
+);
+CREATE INDEX claims_verdict ON claims(verdict_id);
 
-  CREATE TABLE spend_log (
-    day          TEXT PRIMARY KEY,                -- 'YYYY-MM-DD'
-    api_cost_usd REAL NOT NULL,
-    calls        INTEGER NOT NULL
-  );
+CREATE TABLE price_ticks (
+  observed_at   bigint PRIMARY KEY,
+  price_usd     double precision NOT NULL,
+  liquidity_usd double precision NOT NULL,
+  source        text NOT NULL
+);
 
-  CREATE TABLE kv (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
+CREATE TABLE spend_log (
+  day          text PRIMARY KEY,
+  api_cost_usd double precision NOT NULL,
+  calls        integer NOT NULL
+);
 
-  CREATE TABLE free_indexes (
-    idx INTEGER PRIMARY KEY
-  );
-  `,
-  // Constitution s7: "Approvals per cycle: 1" — a ruling has to know which
-  // cycle it belongs to before that can be counted.
-  `
-  ALTER TABLE rulings ADD COLUMN cycle INTEGER;
-  CREATE INDEX rulings_cycle ON rulings(cycle, verdict);
-  `
-];
+CREATE TABLE kv (
+  key   text PRIMARY KEY,
+  value text NOT NULL
+);
 
-export function openDb(path: string): DB {
-  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  migrate(db);
+CREATE TABLE free_indexes (
+  idx integer PRIMARY KEY
+);
+
+CREATE SEQUENCE docket_seq START 1;
+CREATE SEQUENCE derivation_seq START 0 MINVALUE 0;
+`;
+
+const MIGRATIONS: string[] = [SCHEMA];
+
+function isLocal(connectionString: string): boolean {
+  return /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
+}
+
+export interface OpenOptions {
+  /** Confines every table to one schema. Used to isolate tests. */
+  schema?: string;
+}
+
+export async function openDb(connectionString: string, opts: OpenOptions = {}): Promise<DB> {
+  // Heroku Postgres presents a certificate that is not in the default trust
+  // store. Local development has no TLS at all.
+  const ssl = isLocal(connectionString) ? false : { rejectUnauthorized: false };
+
+  if (opts.schema) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(opts.schema)) throw new Error("bad schema name");
+    const setup = new Pool({ connectionString, ssl, max: 1 });
+    try {
+      await setup.query(`CREATE SCHEMA IF NOT EXISTS ${opts.schema}`);
+    } finally {
+      await setup.end();
+    }
+  }
+
+  const pool = new Pool({
+    connectionString,
+    max: 5,
+    ssl,
+    // Set as a connection parameter rather than a post-connect statement: a
+    // fire-and-forget `SET search_path` races the first query on that client.
+    ...(opts.schema ? { options: `-c search_path=${opts.schema}` } : {})
+  });
+
+  const db = wrap(pool, opts.schema);
+  await migrate(db);
   return db;
 }
 
-function migrate(db: DB): void {
-  const version = db.pragma("user_version", { simple: true }) as number;
-  for (let i = version; i < MIGRATIONS.length; i++) {
-    db.transaction(() => {
-      db.exec(MIGRATIONS[i]);
-      db.pragma(`user_version = ${i + 1}`);
-    })();
-  }
+function wrap(pool: Pool, schema?: string): DB {
+  const exec = async (sql: string, params: unknown[] = []) => pool.query(sql, params);
+  return {
+    async rows<T>(sql: string, params?: unknown[]): Promise<T[]> {
+      return (await exec(sql, params)).rows as T[];
+    },
+    async row<T>(sql: string, params?: unknown[]): Promise<T | null> {
+      return ((await exec(sql, params)).rows[0] as T) ?? null;
+    },
+    async run(sql: string, params?: unknown[]): Promise<number> {
+      return (await exec(sql, params)).rowCount ?? 0;
+    },
+    async tx<T>(fn: (db: DB) => Promise<T>): Promise<T> {
+      const client = await pool.connect();
+      try {
+        if (schema) await client.query(`SET search_path TO ${schema}`);
+        await client.query("BEGIN");
+        const out = await fn(bindClient(client));
+        await client.query("COMMIT");
+        return out;
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw e;
+      } finally {
+        client.release();
+      }
+    },
+    async close(): Promise<void> {
+      await pool.end();
+    }
+  };
 }
 
-export function kvGet(db: DB, key: string): string | null {
-  const row = db.prepare("SELECT value FROM kv WHERE key = ?").get(key) as
-    | { value: string }
-    | undefined;
+function bindClient(client: PoolClient): DB {
+  return {
+    async rows<T>(sql: string, params?: unknown[]): Promise<T[]> {
+      return (await client.query(sql, params)).rows as T[];
+    },
+    async row<T>(sql: string, params?: unknown[]): Promise<T | null> {
+      return ((await client.query(sql, params)).rows[0] as T) ?? null;
+    },
+    async run(sql: string, params?: unknown[]): Promise<number> {
+      return (await client.query(sql, params)).rowCount ?? 0;
+    },
+    async tx<T>(fn: (db: DB) => Promise<T>): Promise<T> {
+      return fn(bindClient(client)); // already inside a transaction
+    },
+    async close(): Promise<void> {
+      /* the pool owns the client */
+    }
+  };
+}
+
+async function migrate(db: DB): Promise<void> {
+  await db.run(
+    "CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())"
+  );
+  await db.tx(async (tx) => {
+    // Two dynos booting together must not both try to create the schema.
+    await tx.run("SELECT pg_advisory_xact_lock($1)", [727_1987]);
+    const done = new Set(
+      (await tx.rows<{ version: number }>("SELECT version FROM schema_migrations")).map(
+        (r) => r.version
+      )
+    );
+    for (let i = 0; i < MIGRATIONS.length; i++) {
+      if (done.has(i)) continue;
+      await tx.run(MIGRATIONS[i]);
+      await tx.run("INSERT INTO schema_migrations (version) VALUES ($1)", [i]);
+    }
+  });
+}
+
+export async function kvGet(db: DB, key: string): Promise<string | null> {
+  const row = await db.row<{ value: string }>("SELECT value FROM kv WHERE key = $1", [key]);
   return row?.value ?? null;
 }
 
-export function kvSet(db: DB, key: string, value: string): void {
-  db.prepare(
-    "INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  ).run(key, value);
+export async function kvSet(db: DB, key: string, value: string): Promise<void> {
+  await db.run(
+    "INSERT INTO kv (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    [key, value]
+  );
 }
 
-/** Next docket number, monotonically increasing, starting at 1. */
-export function nextDocketNumber(db: DB): number {
-  let n = 0;
-  db.transaction(() => {
-    n = Number(kvGet(db, "docket_seq") ?? "0") + 1;
-    kvSet(db, "docket_seq", String(n));
-  })();
-  return n;
+/** Next docket number, monotonic, starting at 1. */
+export async function nextDocketNumber(db: DB): Promise<number> {
+  const row = await db.row<{ n: number }>("SELECT nextval('docket_seq') AS n");
+  return Number(row!.n);
 }
 
-/** Lowest freed derivation index, else the next fresh one. */
-export function allocateDerivationIndex(db: DB): number {
-  let idx = 0;
-  db.transaction(() => {
-    const freed = db
-      .prepare("SELECT idx FROM free_indexes ORDER BY idx LIMIT 1")
-      .get() as { idx: number } | undefined;
-    if (freed) {
-      db.prepare("DELETE FROM free_indexes WHERE idx = ?").run(freed.idx);
-      idx = freed.idx;
-      return;
-    }
-    idx = Number(kvGet(db, "derivation_seq") ?? "0");
-    kvSet(db, "derivation_seq", String(idx + 1));
-  })();
-  return idx;
+/**
+ * Lowest freed derivation index, else the next fresh one. The delete and the
+ * read are one statement, so two callers cannot take the same freed index.
+ */
+export async function allocateDerivationIndex(db: DB): Promise<number> {
+  const reused = await db.row<{ idx: number }>(
+    `DELETE FROM free_indexes WHERE idx = (SELECT MIN(idx) FROM free_indexes) RETURNING idx`
+  );
+  if (reused) return reused.idx;
+  const row = await db.row<{ n: number }>("SELECT nextval('derivation_seq') AS n");
+  return Number(row!.n);
 }
 
-export function freeDerivationIndex(db: DB, idx: number): void {
-  db.prepare("INSERT OR IGNORE INTO free_indexes (idx) VALUES (?)").run(idx);
+export async function freeDerivationIndex(db: DB, idx: number): Promise<void> {
+  await db.run("INSERT INTO free_indexes (idx) VALUES ($1) ON CONFLICT DO NOTHING", [idx]);
 }

@@ -22,7 +22,6 @@
     "@rolldown/binding-win32-x64-msvc": "^1.2.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.1.2",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"

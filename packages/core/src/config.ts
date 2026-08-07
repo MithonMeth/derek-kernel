@@ -18,6 +18,7 @@ const EnvSchema = z.object({
     .regex(/^[0-9a-fA-F]{64,128}$/, "hex seed, 64-128 chars")
     .optional(),
   RPC_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().optional(),
   X_API_KEY: z.string().optional(),
   FEE_TARGET_USD: num.pipe(z.number().positive()).default("0.40" as never),
   MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
@@ -28,7 +29,6 @@ const EnvSchema = z.object({
   PAUSED: bool.default("true" as never),
   TOKEN_DECIMALS: num.pipe(z.number().int().min(0).max(18)).default("9" as never),
   CHAIN_ID: z.string().default("solana"),
-  DATA_DIR: z.string().default("./data"),
   FAKE_TREASURY_USD: num.pipe(z.number().nonnegative()).optional(),
   FX_FALLBACK_GBP_USD: num.pipe(z.number().positive()).default("1.30" as never),
   SITE_URL: z.string().default("https://smokingandalf-8fee83f71c08.herokuapp.com"),

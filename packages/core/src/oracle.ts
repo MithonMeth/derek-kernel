@@ -51,15 +51,25 @@ export class Oracle {
   private last: PriceObservation | null = null;
   private frozen = false;
 
-  constructor(
+  private constructor(
     private db: DB,
     private cfg: OracleConfig,
     private fetchers: PriceFetcher[],
     private log?: Logger
-  ) {
-    const persisted = kvGet(db, "oracle_last_tick");
-    if (persisted) this.last = JSON.parse(persisted) as PriceObservation;
-    this.frozen = kvGet(db, "oracle_frozen") === "true";
+  ) {}
+
+  /** Loads whatever state survived the last restart. */
+  static async create(
+    db: DB,
+    cfg: OracleConfig,
+    fetchers: PriceFetcher[],
+    log?: Logger
+  ): Promise<Oracle> {
+    const oracle = new Oracle(db, cfg, fetchers, log);
+    const persisted = await kvGet(db, "oracle_last_tick");
+    if (persisted) oracle.last = JSON.parse(persisted) as PriceObservation;
+    oracle.frozen = (await kvGet(db, "oracle_frozen")) === "true";
+    return oracle;
   }
 
   /** Called every ~60s by the worker. Never per-request. */
@@ -81,17 +91,17 @@ export class Oracle {
       this.log?.error("all price sources failed; serving cached price until stale window ends");
       return;
     }
-    this.accept(obs, now);
+    await this.accept(obs, now);
   }
 
   /** Separated from poll() so tests can inject observations directly. */
-  accept(obs: PriceObservation, now: number = Date.now()): void {
+  async accept(obs: PriceObservation, now: number = Date.now()): Promise<void> {
     if (!(obs.priceUsd > 0) || !Number.isFinite(obs.priceUsd)) {
       this.log?.error({ obs }, "rejecting non-positive price tick");
       return;
     }
 
-    const median = this.medianPrice(now);
+    const median = await this.medianPrice(now);
     const bandLow = this.cfg.bandLow ?? 0.25;
     const bandHigh = this.cfg.bandHigh ?? 4;
     if (median !== null && (obs.priceUsd < median * bandLow || obs.priceUsd > median * bandHigh)) {
@@ -102,13 +112,17 @@ export class Oracle {
       return;
     }
 
-    this.db
-      .prepare(
-        "INSERT OR REPLACE INTO price_ticks (observed_at, price_usd, liquidity_usd, source) VALUES (?, ?, ?, ?)"
-      )
-      .run(obs.observedAt, obs.priceUsd, obs.liquidityUsd, obs.source);
+    await this.db.run(
+      `INSERT INTO price_ticks (observed_at, price_usd, liquidity_usd, source)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (observed_at) DO UPDATE SET
+         price_usd = excluded.price_usd,
+         liquidity_usd = excluded.liquidity_usd,
+         source = excluded.source`,
+      [obs.observedAt, obs.priceUsd, obs.liquidityUsd, obs.source]
+    );
     this.last = obs;
-    kvSet(this.db, "oracle_last_tick", JSON.stringify(obs));
+    await kvSet(this.db, "oracle_last_tick", JSON.stringify(obs));
 
     if (obs.liquidityUsd < this.cfg.minLiquidityUsd) {
       if (!this.frozen) {
@@ -118,16 +132,16 @@ export class Oracle {
         );
       }
       this.frozen = true;
-      kvSet(this.db, "oracle_frozen", "true");
+      await kvSet(this.db, "oracle_frozen", "true");
       return;
     }
 
     if (this.frozen) this.log?.warn("liquidity recovered; fee unfrozen");
     this.frozen = false;
-    kvSet(this.db, "oracle_frozen", "false");
+    await kvSet(this.db, "oracle_frozen", "false");
 
-    const feeBase = this.computeFeeBase(obs.priceUsd);
-    if (feeBase !== null) kvSet(this.db, "last_good_fee_base", feeBase.toString());
+    const feeBase = await this.computeFeeBase(obs.priceUsd, now);
+    if (feeBase !== null) await kvSet(this.db, "last_good_fee_base", feeBase.toString());
   }
 
   current(now: number = Date.now()): PriceObservation | null {
@@ -141,8 +155,8 @@ export class Oracle {
    * The fee for a new docket, in base units. Throws SubmissionsPausedError
    * rather than ever quoting a fee it cannot defend.
    */
-  quoteFee(now: number = Date.now()): FeeQuote {
-    const lastGood = kvGet(this.db, "last_good_fee_base");
+  async quoteFee(now: number = Date.now()): Promise<FeeQuote> {
+    const lastGood = await kvGet(this.db, "last_good_fee_base");
 
     const obs = this.current(now);
     if (!obs) throw new SubmissionsPausedError("no fresh price for 30 minutes");
@@ -158,7 +172,7 @@ export class Oracle {
       };
     }
 
-    const feeBase = this.computeFeeBase(obs.priceUsd);
+    const feeBase = await this.computeFeeBase(obs.priceUsd, now);
     if (feeBase === null) {
       if (lastGood !== null) {
         this.log?.error("computed fee failed clamps; serving last good fee");
@@ -186,11 +200,11 @@ export class Oracle {
    * Whole tokens ≈ FEE_TARGET_USD / price, clamped: never zero, never
    * negative, never more than maxFeeMultiple × the median-price fee.
    */
-  private computeFeeBase(priceUsd: number): bigint | null {
+  private async computeFeeBase(priceUsd: number, now: number): Promise<bigint | null> {
     const whole = Math.round(this.cfg.feeTargetUsd / priceUsd);
     if (!Number.isFinite(whole) || whole < 1) return null;
 
-    const median = this.medianPrice(Date.now());
+    const median = await this.medianPrice(now);
     if (median !== null) {
       const medianFee = Math.max(1, Math.round(this.cfg.feeTargetUsd / median));
       if (whole > medianFee * (this.cfg.maxFeeMultiple ?? 10)) return null;
@@ -198,11 +212,12 @@ export class Oracle {
     return wholeTokensToBase(BigInt(whole), this.cfg.tokenDecimals);
   }
 
-  private medianPrice(now: number): number | null {
+  private async medianPrice(now: number): Promise<number | null> {
     const windowMs = this.cfg.medianWindowMs ?? 24 * 3600_000;
-    const rows = this.db
-      .prepare("SELECT price_usd FROM price_ticks WHERE observed_at >= ? ORDER BY price_usd")
-      .all(now - windowMs) as Array<{ price_usd: number }>;
+    const rows = await this.db.rows<{ price_usd: number }>(
+      "SELECT price_usd FROM price_ticks WHERE observed_at >= $1 ORDER BY price_usd",
+      [now - windowMs]
+    );
     // Too few ticks to call anything an outlier — happens on first boot.
     if (rows.length < 5) return null;
     const mid = Math.floor(rows.length / 2);
