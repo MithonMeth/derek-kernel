@@ -64,6 +64,10 @@ export class Oracle {
 
   /** Called every ~60s by the worker. Never per-request. */
   async poll(now: number = Date.now()): Promise<void> {
+    // Pre-mint there is no token to price. That is an expected state, not a
+    // failure — quoteFee() still refuses, which is the behaviour that matters.
+    if (this.fetchers.length === 0) return;
+
     let obs: PriceObservation | null = null;
     for (const fetch of this.fetchers) {
       try {
