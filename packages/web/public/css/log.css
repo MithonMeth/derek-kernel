@@ -1,0 +1,137 @@
+/* Treasury Decision Log — the full public record. Loaded after site.css,
+   which supplies the palette, the paper and the type. */
+
+.sheet{max-width:860px;margin:0 auto;padding:0 20px 80px;}
+
+/* masthead */
+.masthead{padding:44px 0 0;}
+.masthead__eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--ink-soft);margin:0 0 14px;
+}
+.masthead__eyebrow a{color:inherit;text-decoration:none;border-bottom:1px solid var(--rule);}
+.masthead__eyebrow a:hover{color:var(--oxblood);}
+.masthead__title{
+  font-family:"Archivo Narrow",sans-serif;font-weight:700;
+  font-size:clamp(40px,10vw,78px);line-height:.92;letter-spacing:-.015em;
+  text-transform:uppercase;margin:0;
+}
+.masthead__sub{
+  font-style:italic;font-size:18px;color:var(--ink-soft);
+  margin:14px 0 0;max-width:48ch;
+}
+
+/* duty strip */
+.duty{
+  margin:34px 0 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+.duty__cell{padding:12px 14px 14px 0;border-right:1px solid var(--rule);}
+.duty__cell:last-child{border-right:0;}
+.duty__label{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:3px;
+}
+.duty__value{
+  font-family:"Archivo Narrow",sans-serif;font-weight:700;font-size:26px;
+  line-height:1.1;letter-spacing:.01em;
+}
+.duty__value--warn{color:var(--oxblood);}
+
+/* entries */
+.entry{
+  border-bottom:1px solid var(--rule);padding:34px 0 30px;
+  display:grid;grid-template-columns:118px 1fr;gap:0 26px;position:relative;
+}
+.entry__rail{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:19px;
+  color:var(--ink-soft);padding-top:5px;
+}
+.rail__docket{color:var(--ink);font-weight:500;letter-spacing:.06em;display:block;}
+.rail__time{display:block;margin-top:10px;font-size:19px;line-height:1.1;color:var(--ink);letter-spacing:-.02em;}
+.rail__date{display:block;letter-spacing:.08em;}
+.rail__flag{
+  display:inline-block;margin-top:14px;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--oxblood);border:1px solid var(--oxblood);padding:2px 5px;
+}
+.rail__held{
+  display:inline-block;margin-top:14px;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--stampblue);border:1px solid var(--stampblue);padding:2px 5px;
+}
+
+.entry__body{min-width:0;}
+.entry__title{
+  font-family:"Archivo Narrow",sans-serif;font-weight:600;font-size:25px;
+  line-height:1.16;text-transform:uppercase;margin:0 0 3px;padding-right:130px;
+}
+.entry__from{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;
+  color:var(--ink-soft);margin:0 0 16px;
+}
+.quote{
+  border-left:3px solid var(--edge);padding:2px 0 2px 16px;margin:0 0 20px;
+  font-size:15.5px;line-height:26px;color:var(--ink-soft);font-style:italic;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.ruling{margin:0;font-size:17.5px;line-height:29px;}
+.ruling p{margin:0 0 14px;}
+.ruling p:last-child{margin-bottom:0;}
+.ruling ol{margin:0 0 14px;padding-left:22px;}
+.ruling li{margin-bottom:4px;}
+.ruling__close{
+  font-family:"Archivo Narrow",sans-serif;font-weight:600;font-size:19px;
+  line-height:1.35;margin-top:18px !important;
+}
+
+.award{
+  margin-top:22px;border-top:1px solid var(--rule);padding-top:11px;
+  display:flex;flex-wrap:wrap;gap:0 30px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-soft);
+}
+.award b{font-weight:500;color:var(--ink);}
+.award .up{color:var(--stampblue);}
+.award .down{color:var(--oxblood);}
+
+/* stamp */
+.stamp{
+  position:absolute;top:30px;right:0;
+  font-family:"Archivo Narrow",sans-serif;font-weight:700;font-size:15px;
+  letter-spacing:.16em;text-transform:uppercase;padding:7px 12px 6px;
+  border:2.5px solid currentColor;transform:rotate(-7deg);opacity:.82;
+  mix-blend-mode:multiply;text-align:center;line-height:1.05;pointer-events:none;
+}
+.stamp small{
+  display:block;font-family:"IBM Plex Mono",monospace;font-weight:400;
+  font-size:8.5px;letter-spacing:.1em;margin-top:3px;opacity:.85;
+}
+.stamp--no{color:var(--oxblood);}
+.stamp--yes{color:var(--stampblue);transform:rotate(4deg);}
+.stamp--void{color:var(--ink-soft);transform:rotate(-2deg);}
+
+.log__empty{
+  padding:40px 0 0;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
+}
+
+.colophon{
+  margin-top:46px;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  line-height:20px;letter-spacing:.05em;color:var(--ink-soft);text-transform:uppercase;
+}
+.colophon span{display:block;}
+.colophon a{color:inherit;}
+
+@media (max-width:660px){
+  .duty{grid-template-columns:repeat(2,1fr);}
+  .duty__cell{border-bottom:1px solid var(--rule);}
+  .duty__cell:nth-child(2){border-right:0;}
+  .duty__cell:nth-child(3),.duty__cell:nth-child(4){border-bottom:0;}
+  .entry{grid-template-columns:1fr;gap:0;}
+  .entry__rail{padding-top:0;margin-bottom:16px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .rail__time{margin-top:0;font-size:16px;}
+  .rail__flag,.rail__held{margin-top:0;}
+  .entry__title{padding-right:0;font-size:22px;}
+  /* justify-self stops the grid stretching it; the stamp should hug its text. */
+  .stamp{position:static;display:inline-block;justify-self:start;transform:rotate(-3deg);margin:18px 0 0;}
+  .stamp--yes{transform:rotate(2deg);}
+}

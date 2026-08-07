@@ -7,9 +7,14 @@ import { z } from "zod";
 const LimitsSchema = z
   .object({
     version: z.number().int().positive(),
+    // Section 7 of the constitution. These four are restated in the prose and
+    // checked against it at boot.
     max_award_gbp: z.number().positive(),
     min_award_gbp: z.number().positive(),
     treasury_fraction_cap: z.number().gt(0).lte(1),
+    approvals_per_cycle: z.number().int().positive(),
+    // Operational parameters from the build guide, not the constitution, so
+    // they are not prose-checked.
     claim_expiry_days: z.number().int().positive(),
     fee_split: z.object({
       burn: z.number().min(0).max(1),
@@ -69,24 +74,30 @@ export function loadConstitution(dir: string): Constitution {
   return { text, limits, sha256, commit };
 }
 
+const group = (n: number): string => n.toLocaleString("en-GB");
+/** 0.05 -> "5", without the floating-point tail 0.05 * 100 produces. */
+const percent = (f: number): string => String(Number((f * 100).toFixed(6)));
+
 /**
- * The prose and LIMITS.json describe the same rules. If they drift apart,
- * one of them is lying, and Derek must not boot until a human decides which.
+ * Section 7 restates the enforced limits in prose, and says outright that if
+ * the two disagree the code is right and the repository is broken. Rather
+ * than trust that, refuse to boot: pin each limit to the exact line that
+ * states it, so a number can never be changed in one place only.
  */
 export function assertProseMatchesLimits(text: string, limits: Limits): void {
   const expect: Array<[string, string]> = [
-    [`£${limits.max_award_gbp}`, "max award"],
-    [`£${limits.min_award_gbp}`, "min award"],
-    [`${limits.treasury_fraction_cap * 100}%`, "treasury fraction cap"],
-    [`${limits.claim_expiry_days} days`, "claim expiry"],
-    [`${limits.fee_split.burn * 100}%`, "burn split"],
-    [`${limits.fee_split.treasury * 100}%`, "treasury split"],
-    [`${limits.fee_split.ops * 100}%`, "ops split"]
+    [`Maximum per proposal: **${group(limits.max_award_gbp)}**`, "maximum per proposal"],
+    [
+      `Maximum share of Treasury: **${percent(limits.treasury_fraction_cap)}%**`,
+      "maximum share of Treasury"
+    ],
+    [`Minimum award: **${group(limits.min_award_gbp)}**`, "minimum award"],
+    [`Approvals per cycle: **${limits.approvals_per_cycle}**`, "approvals per cycle"]
   ];
   for (const [needle, what] of expect) {
     if (!text.includes(needle)) {
       throw new ConstitutionError(
-        `constitution prose does not state the ${what} (${needle}) from LIMITS.json`
+        `constitution prose does not state the ${what} from LIMITS.json — expected the line "${needle}"`
       );
     }
   }

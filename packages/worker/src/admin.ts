@@ -16,6 +16,8 @@ import {
   buildPostText,
   createClaim,
   createLogger,
+  currentCycle,
+  cycleSlotFree,
   getUsdPerGbp,
   loadConfig,
   markClaimPaid,
@@ -61,10 +63,18 @@ async function main(): Promise<void> {
       if (!arg1) throw new Error("usage: admin approve <docketId>");
       const ruling = db
         .prepare(
-          "SELECT award_gbp FROM rulings WHERE docket_id = ? AND verdict = 'approved' AND review_status = 'pending_review'"
+          "SELECT award_gbp, cycle FROM rulings WHERE docket_id = ? AND verdict = 'approved' AND review_status = 'pending_review'"
         )
-        .get(arg1) as { award_gbp: number } | undefined;
+        .get(arg1) as { award_gbp: number; cycle: number | null } | undefined;
       if (!ruling) throw new Error(`${arg1} has no approval pending review`);
+      // The constitution's one-approval-per-cycle limit binds the operator
+      // too, or countersigning two held rulings would quietly break it.
+      const rulingCycle = ruling.cycle ?? currentCycle(db);
+      if (!cycleSlotFree(db, rulingCycle, runtime.constitution.limits.approvals_per_cycle)) {
+        throw new Error(
+          `cycle ${rulingCycle} has already issued its approval; this one cannot be countersigned into it`
+        );
+      }
       const price = runtime.oracle.current();
       if (!price) throw new Error("no live price — cannot lock the token amount; try again when the oracle has a tick");
       const usdPerGbp = await getUsdPerGbp(db, cfg.FX_FALLBACK_GBP_USD);

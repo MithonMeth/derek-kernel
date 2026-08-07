@@ -62,9 +62,12 @@ function build(raw: unknown, env: Record<string, string> = {}, flags: string[] =
 function seedProposal(db: DB, id: string, amountGbp: number): string {
   db.prepare(
     "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, "Replacement kettle", amountGbp, "It boils water. £34 at Argos. Dave carries it.", Date.now());
+  ).run(id, "500 vinyl stickers", amountGbp, "Quote from a real printer. Dave collects them.", Date.now());
   return id;
 }
+
+// Above the constitution's minimum award of 50.
+const AWARD = 180;
 
 const QUOTE = {
   feeBase: 10_000n * 10n ** 9n,
@@ -78,15 +81,15 @@ describe("runtime end to end", () => {
   it("carries an approval from submission through payment, ruling, claim, and post", async () => {
     const { runtime, db, chain, posted } = build({
       verdict: "approved",
-      award_gbp: 34,
+      award_gbp: AWARD,
       gates_passed: 5,
-      ruling_line: "It is a kettle. It exists. It boils water.",
-      ruling_text: "Approved. £34.\n\nFour sentences. Nobody told me it would transform anything."
+      ruling_line: "A quote from a real printer. That is the entire reason.",
+      ruling_text: "Approved. 180.\n\nSomebody phoned somebody."
     });
     // The oracle needs a live tick before a claim can lock a token amount.
     runtime.oracle.accept({ priceUsd: 0.00004, liquidityUsd: 50_000, source: "test", observedAt: Date.now() });
 
-    const docket = createDocket(db, runtime.deriver!, QUOTE, seedProposal(db, "p1", 34));
+    const docket = createDocket(db, runtime.deriver!, QUOTE, seedProposal(db, "p1", AWARD));
     chain.setBalance(docket.deposit_address, QUOTE.feeBase);
 
     await runtime.watchCycle();
@@ -99,9 +102,11 @@ describe("runtime end to end", () => {
       verdict: string;
       award_gbp: number;
       review_status: string;
+      cycle: number;
     };
     expect(ruling.verdict).toBe("approved");
-    expect(ruling.award_gbp).toBe(34);
+    expect(ruling.award_gbp).toBe(AWARD);
+    expect(ruling.cycle).toBe(1);
 
     // Approved and auto-confirmed → a claim code exists, locked at ruling price.
     const claim = db.prepare("SELECT code, award_tokens FROM claims WHERE verdict_id = ?").get(docket.id) as {
@@ -123,15 +128,15 @@ describe("runtime end to end", () => {
     const { runtime, db, chain, posted } = build(
       {
         verdict: "approved",
-        award_gbp: 34,
+        award_gbp: AWARD,
         gates_passed: 5,
         ruling_line: "Fine.",
-        ruling_text: "Approved. £34."
+        ruling_text: "Approved. 180."
       },
       { AUTO_APPROVE_UNFLAGGED: "false" }
     );
     runtime.oracle.accept({ priceUsd: 0.00004, liquidityUsd: 50_000, source: "test", observedAt: Date.now() });
-    const docket = createDocket(db, runtime.deriver!, QUOTE, seedProposal(db, "p1", 34));
+    const docket = createDocket(db, runtime.deriver!, QUOTE, seedProposal(db, "p1", AWARD));
     chain.setBalance(docket.deposit_address, QUOTE.feeBase);
 
     await runtime.watchCycle();
@@ -146,6 +151,34 @@ describe("runtime end to end", () => {
     expect(db.prepare("SELECT COUNT(*) n FROM claims").get()).toEqual({ n: 0 });
     await runtime.publishCycle();
     expect(posted).toEqual([]);
+  });
+
+  it("holds a second approval in the same cycle rather than issuing it", async () => {
+    const { runtime, db, chain } = build({
+      verdict: "approved",
+      award_gbp: AWARD,
+      gates_passed: 5,
+      ruling_line: "Fine.",
+      ruling_text: "Approved. 180."
+    });
+    runtime.oracle.accept({ priceUsd: 0.00004, liquidityUsd: 50_000, source: "test", observedAt: Date.now() });
+    for (const id of ["p1", "p2"]) {
+      const d = createDocket(db, runtime.deriver!, QUOTE, seedProposal(db, id, AWARD));
+      chain.setBalance(d.deposit_address, QUOTE.feeBase);
+    }
+    await runtime.watchCycle();
+    await runtime.rulingCycle();
+
+    // Constitution s7: one approval per cycle. Both rulings stand as
+    // approvals, but only the first releases money.
+    const rows = db
+      .prepare("SELECT docket_id, verdict, review_status FROM rulings ORDER BY docket_id")
+      .all() as Array<{ verdict: string; review_status: string }>;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.verdict === "approved")).toBe(true);
+    expect(rows.filter((r) => r.review_status === "auto")).toHaveLength(1);
+    expect(rows.filter((r) => r.review_status === "pending_review")).toHaveLength(1);
+    expect((db.prepare("SELECT COUNT(*) n FROM claims").get() as { n: number }).n).toBe(1);
   });
 
   it("judges nothing while paused, and resumes when unpaused at runtime", async () => {

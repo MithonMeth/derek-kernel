@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treasury Decision Log — DEREK</title>
+<meta name="description" content="Every ruling, in full, in the order issued. The Manager reads each proposal once and does not revisit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/log.css">
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <p class="masthead__eyebrow">
+      <a href="/">← DEREK</a> · Public record · Cycle <span id="cycle">—</span> · Unedited
+    </p>
+    <h1 class="masthead__title">Treasury<br>Decision Log</h1>
+    <p class="masthead__sub">Every ruling, in full, in the order issued. The Manager reads each proposal once and does not revisit.</p>
+  </header>
+
+  <section class="duty" aria-label="Duty summary">
+    <div class="duty__cell">
+      <span class="duty__label">Rulings issued</span>
+      <span class="duty__value" id="d-rulings">—</span>
+    </div>
+    <div class="duty__cell">
+      <span class="duty__label">Approved, all time</span>
+      <span class="duty__value" id="d-approved">—</span>
+    </div>
+    <div class="duty__cell">
+      <span class="duty__label">Days since approval</span>
+      <span class="duty__value duty__value--warn" id="d-days">—</span>
+    </div>
+    <div class="duty__cell">
+      <span class="duty__label">Cap in force</span>
+      <span class="duty__value" id="d-cap">—</span>
+    </div>
+  </section>
+
+  <div id="entries"></div>
+  <p class="log__empty" id="empty" hidden>No rulings yet. The record starts with the first docket.</p>
+
+  <div class="pager" id="pager" hidden>
+    <button class="pager__btn" id="prev" type="button">◀ Newer</button>
+    <span class="pager__count" id="pcount">Page — of —</span>
+    <button class="pager__btn" id="next" type="button">Older ▶</button>
+  </div>
+
+  <footer class="colophon">
+    <span id="colo-commit">Rulings issued under constitution variant C</span>
+    <span>Appeals are logged and not read · there is no second reader</span>
+    <span>The Manager holds no keys and executes no payments</span>
+  </footer>
+
+</div>
+<script src="/js/log.js"></script>
+</body>
+</html>

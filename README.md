@@ -5,11 +5,34 @@ anyone can submit a spending proposal, pay a fee in $DEREK, and receive a
 ruling written by an AI civil servant with a constitution, a £980 cap, and no
 appeals process. Half of every fee is burned whether he approves you or not.
 
-Built from `derek-build-guide.md`. The companion documents it references
-(`ai-treasury-spec.md`, `CONSTITUTION-rude.md` variant C, `test-proposals.json`)
-were not available at build time — the constitution in `constitution/` is a
-marked placeholder, and the hostile-case test fixtures are original. Swap both
-when the real documents land.
+Built from `derek-build-guide.md`. `constitution/CONSTITUTION.md` is the real
+variant C. Two companion documents named by the guide have still not arrived:
+`ai-treasury-spec.md` (Parts 1–4 were built from the guide's own descriptions)
+and `test-proposals.json` (the hostile-case fixtures in `packages/core/test`
+are original).
+
+## Two things in the constitution that need a human decision
+
+**The minimum award rejects the kettle.** Section 7 sets `Minimum award: 50`,
+and the code enforces it. But section 6's own register approves a £34 kettle,
+and so does the decision-log mockup. As written, that ruling is impossible —
+an approval below 50 is converted to a rejection. Either the floor should drop
+(to ~25, keeping the kettle) or the examples should move above it. Right now
+section 7 wins, because it is the section that says it is enforced in code.
+
+**Persona.** The constitution says "I am the Manager"; the site, token and
+domain say DEREK. The build is consistent with reading DEREK as the system
+(Departmental Expenditure Review & Evaluation Kernel) and the Manager as the
+civil servant operating it — which is how the decision log's colophon reads —
+so the constitution ships verbatim and the site keeps its own name. If they are
+meant to be one name, the site copy is what changes.
+
+**No submitter identity exists.** The constitution keeps a per-submitter tally
+("If yours is in double figures I will mention it") and the log mockup shows a
+handle. Submissions are anonymous — payment arrives at a per-docket address
+with no account — so the log renders "submitted anonymously" and no tally. The
+paying wallet could supply a stable pseudonym, but that means parsing the
+funding transaction and was not built.
 
 ## Layout
 
@@ -18,8 +41,18 @@ constitution/        CONSTITUTION.md + LIMITS.json — validated at boot; boot r
 packages/core        pipeline, guards, db, oracle, deposits, claims, publisher — no HTTP server
 packages/worker      worker entrypoint + admin CLI
 packages/api         fastify: /api/*, /r/:docket permalinks, serves the static site
-packages/web         the site (no build step)
+packages/web         the site (no build step) — `/` and `/log.html`
 ```
+
+## Cycles
+
+A cycle is a day, anchored to a `cycle_epoch` fixed on first boot, and it is
+what the constitution's `Approvals per cycle: 1` is counted against. A second
+approvable proposal in the same cycle is **held**, not rewritten into a
+rejection: the ruling stands and is published as an approval, but no claim code
+issues until an operator countersigns it (`npm run admin -- approve <docket>`),
+and the countersign path enforces the same limit. Only approvals that actually
+issued consume the cycle's slot, so one held ruling does not block the next.
 
 ## The hero model
 

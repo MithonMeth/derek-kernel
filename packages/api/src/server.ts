@@ -17,8 +17,9 @@ import {
   baseToWholeTokens,
   createDocket,
   createLogger,
+  currentCycle,
+  daysSinceLastApproval,
   formatWholeTokens,
-  kvGet,
   loadConfig,
   parseBase,
   submitClaim,
@@ -189,13 +190,18 @@ app.get("/api/dockets/:id", async (req, reply) => {
 });
 
 app.get("/api/rulings", async (req) => {
-  const page = Math.max(1, Number((req.query as { page?: string }).page) || 1);
+  const query = req.query as { page?: string; detail?: string };
+  const page = Math.max(1, Number(query.page) || 1);
+  // The decision log needs the proposal text and the full ruling; the
+  // homepage ledger does not, and they add up quickly.
+  const detail = query.detail === "1";
   const per = 10;
   const total = (db.prepare("SELECT COUNT(*) n FROM rulings").get() as { n: number }).n;
   const rows = db
     .prepare(
-      `SELECT r.docket_id, r.verdict, r.award_gbp, r.ruling_line, r.ruled_at,
-              d.fee_tokens, p.title, p.amount_gbp
+      `SELECT r.docket_id, r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at,
+              r.gates_passed, r.flags, r.review_status, r.cycle,
+              d.fee_tokens, p.title, p.amount_gbp, p.body
        FROM rulings r
        JOIN dockets d ON d.id = r.docket_id
        JOIN proposals p ON p.id = d.proposal_id
@@ -206,10 +212,16 @@ app.get("/api/rulings", async (req) => {
     verdict: string;
     award_gbp: number | null;
     ruling_line: string;
+    ruling_text: string;
     ruled_at: number;
+    gates_passed: number | null;
+    flags: string;
+    review_status: string;
+    cycle: number | null;
     fee_tokens: string;
     title: string;
     amount_gbp: number;
+    body: string;
   }>;
 
   const burnPct = runtime.constitution.limits.fee_split.burn;
@@ -217,19 +229,32 @@ app.get("/api/rulings", async (req) => {
     page,
     pages: Math.max(1, Math.ceil(total / per)),
     total,
-    items: rows.map((r) => ({
-      docketId: r.docket_id,
-      verdict: r.verdict,
-      awardGbp: r.award_gbp,
-      rulingLine: r.ruling_line,
-      ruledAt: r.ruled_at,
-      title: r.title,
-      amountGbp: r.amount_gbp,
-      burned: formatWholeTokens(
-        (parseBase(r.fee_tokens) * BigInt(Math.round(burnPct * 100))) / 100n,
-        cfg.TOKEN_DECIMALS
-      )
-    }))
+    items: rows.map((r) => {
+      const base = {
+        docketId: r.docket_id,
+        verdict: r.verdict,
+        awardGbp: r.award_gbp,
+        rulingLine: r.ruling_line,
+        ruledAt: r.ruled_at,
+        title: r.title,
+        amountGbp: r.amount_gbp,
+        burned: formatWholeTokens(
+          (parseBase(r.fee_tokens) * BigInt(Math.round(burnPct * 100))) / 100n,
+          cfg.TOKEN_DECIMALS
+        )
+      };
+      if (!detail) return base;
+      return {
+        ...base,
+        proposal: r.body,
+        rulingText: r.ruling_text,
+        gatesPassed: r.gates_passed,
+        flags: JSON.parse(r.flags || "[]") as string[],
+        // A held approval is a real ruling that has not released money.
+        held: r.verdict === "approved" && r.review_status === "pending_review",
+        cycle: r.cycle
+      };
+    })
   };
 });
 
@@ -264,7 +289,14 @@ app.get("/api/stats", async () => {
     treasuryUsd: await runtime.treasuryUsd().catch(() => null),
     fee,
     paused: runtime.isPaused(),
-    cycle: Number(kvGet(db, "cycle") ?? "1")
+    cycle: currentCycle(db),
+    daysSinceApproval: daysSinceLastApproval(db),
+    maxAward: runtime.constitution.limits.max_award_gbp,
+    minAward: runtime.constitution.limits.min_award_gbp,
+    constitution: {
+      commit: runtime.constitution.commit,
+      sha256: runtime.constitution.sha256
+    }
   };
 });
 

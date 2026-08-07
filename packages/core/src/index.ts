@@ -16,4 +16,5 @@ export * from "./chain.js";
 export * from "./dockets.js";
 export * from "./claims.js";
 export * from "./publisher.js";
+export * from "./cycles.js";
 export * from "./runtime.js";

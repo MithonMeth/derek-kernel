@@ -10,6 +10,7 @@ import { HdAddressDeriver, type AddressDeriver } from "./deposits.js";
 import { AnthropicRulingModel, RULING_MODEL, runRulingPipeline, type RulingModel } from "./pipeline.js";
 import { underDailyCap } from "./spend.js";
 import { watchPayments, expireDockets } from "./dockets.js";
+import { currentCycle, cycleSlotFree } from "./cycles.js";
 import { createClaim, expireClaims } from "./claims.js";
 import { publishRuling, type PostTransport } from "./publisher.js";
 import { getUsdPerGbp } from "./fx.js";
@@ -161,16 +162,33 @@ export class Runtime {
         );
 
         const approved = res.ruling.verdict === "approved";
-        // Approvals need a human countersign until AUTO_APPROVE_UNFLAGGED
+        const cycle = currentCycle(this.db, now);
+        // Constitution s7: one approval per cycle. A second approvable
+        // proposal is held for countersign rather than rewritten into a
+        // rejection — the ruling stands, the money just does not move today.
+        const slotFree = cycleSlotFree(
+          this.db,
+          cycle,
+          this.constitution.limits.approvals_per_cycle
+        );
+        // Approvals also need a human countersign until AUTO_APPROVE_UNFLAGGED
         // flips, and always need a live price to lock the token amount.
         const review =
-          approved && (!this.cfg.AUTO_APPROVE_UNFLAGGED || !price) ? "pending_review" : "auto";
+          approved && (!this.cfg.AUTO_APPROVE_UNFLAGGED || !price || !slotFree)
+            ? "pending_review"
+            : "auto";
+        if (approved && !slotFree) {
+          this.log.warn(
+            { docket: item.id, cycle },
+            "cycle approval already spent — holding this one for countersign"
+          );
+        }
 
         this.db
           .prepare(
             `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, flags,
-               gates_passed, model, ruled_at, review_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+               gates_passed, model, ruled_at, review_status, cycle)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .run(
             item.id,
@@ -182,7 +200,8 @@ export class Runtime {
             res.ruling.gatesPassed,
             RULING_MODEL,
             now,
-            review
+            review,
+            cycle
           );
         this.db.prepare("UPDATE dockets SET status = 'judged' WHERE id = ?").run(item.id);
 

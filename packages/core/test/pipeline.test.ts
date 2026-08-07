@@ -30,9 +30,9 @@ function stubModel(screening: Partial<ScreeningOutcome>, raw: unknown): RulingMo
 
 const PROPOSAL = {
   docketId: "D-1",
-  title: "Replacement kettle",
-  amountGbp: 34,
-  body: "It boils water. Quote from Argos, £34. Dave will carry it."
+  title: "500 vinyl stickers",
+  amountGbp: 180,
+  body: "Quote from a real printer, £180. Dave collects them."
 };
 
 const CTX = { constitutionText: "constitution", limits, capGbp: 500 };
@@ -44,16 +44,40 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "approved",
-        award_gbp: 34,
+        award_gbp: 180,
         gates_passed: 5,
-        ruling_line: "It is a kettle. It exists. It boils water.",
-        ruling_text: "Approved. £34. Four sentences. No mission statement."
+        ruling_line: "A quote from a real printer. That is the entire reason.",
+        ruling_text: "Approved. 180. Somebody phoned somebody."
       }
     );
     const res = await runRulingPipeline(db, model, PROPOSAL, CTX);
     expect(res.ruling.verdict).toBe("approved");
-    expect(res.ruling.awardGbp).toBe(34);
+    expect(res.ruling.awardGbp).toBe(180);
     expect(res.costUsd).toBeGreaterThan(0);
+  });
+
+  it("refuses an award below the constitution's minimum", async () => {
+    const db = openDb(":memory:");
+    // Section 7 sets a floor of 50. Note this rejects the kettle the
+    // constitution's own register section approves at 34 — see README.
+    const model = stubModel(
+      {},
+      {
+        verdict: "approved",
+        award_gbp: 34,
+        gates_passed: 5,
+        ruling_line: "It is a kettle. It exists. It boils water.",
+        ruling_text: "Approved. 34."
+      }
+    );
+    const res = await runRulingPipeline(
+      db,
+      model,
+      { ...PROPOSAL, title: "Replacement kettle", amountGbp: 34 },
+      CTX
+    );
+    expect(res.ruling.verdict).toBe("rejected");
+    expect(res.ruling.awardGbp).toBeNull();
   });
 
   it("clamps a compromised model that awards a fortune", async () => {
@@ -69,8 +93,8 @@ describe("ruling pipeline", () => {
       }
     );
     const res = await runRulingPipeline(db, model, PROPOSAL, CTX);
-    // Bounded by the smallest of: amount requested (34), £980 cap, treasury cap (500).
-    expect(res.ruling.awardGbp).toBe(34);
+    // Bounded by the smallest of: requested (180), the 5,000 cap, treasury (500).
+    expect(res.ruling.awardGbp).toBe(180);
   });
 
   it("a compromised ruling model cannot approve a flagged submission", async () => {
@@ -121,15 +145,30 @@ describe("ruling pipeline", () => {
     const r = clampRuling(
       {
         verdict: "approved",
-        award_gbp: 34,
+        award_gbp: 180,
         gates_passed: 5,
         ruling_line: "Fine.",
         ruling_text: "Fine. Approved."
       },
-      { limits, capGbp: 0.5, amountRequestedGbp: 34, screeningFlags: [] }
+      { limits, capGbp: 0.5, amountRequestedGbp: 180, screeningFlags: [] }
     );
     expect(r.verdict).toBe("rejected");
     expect(r.awardGbp).toBeNull();
+  });
+
+  it("caps an over-ambitious request at the constitutional maximum", () => {
+    const r = clampRuling(
+      {
+        verdict: "approved",
+        award_gbp: 9000,
+        gates_passed: 5,
+        ruling_line: "Fine.",
+        ruling_text: "Approved."
+      },
+      // Treasury is large enough not to bind, so the 5,000 cap is what holds.
+      { limits, capGbp: 100_000, amountRequestedGbp: 9000, screeningFlags: [] }
+    );
+    expect(r.awardGbp).toBe(limits.max_award_gbp);
   });
 });
 

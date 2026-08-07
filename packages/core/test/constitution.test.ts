@@ -17,9 +17,11 @@ function tempConstitution(): string {
 describe("constitution loader", () => {
   it("loads the repo constitution and reports a content hash", () => {
     const c = loadConstitution(realDir);
-    expect(c.limits.max_award_gbp).toBe(980);
+    expect(c.limits.max_award_gbp).toBe(5000);
+    expect(c.limits.min_award_gbp).toBe(50);
+    expect(c.limits.approvals_per_cycle).toBe(1);
     expect(c.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(c.text.length).toBeGreaterThan(500);
+    expect(c.text).toContain("I am the Manager.");
   });
 
   it("refuses to boot when LIMITS.json is corrupted", () => {
@@ -39,9 +41,17 @@ describe("constitution loader", () => {
   it("refuses to boot when the prose stops matching the limits", () => {
     const dir = tempConstitution();
     const limits = JSON.parse(readFileSync(join(dir, "LIMITS.json"), "utf8"));
-    limits.max_award_gbp = 1200; // prose still says £980
+    limits.max_award_gbp = 1200; // section 7 still says 5,000
     writeFileSync(join(dir, "LIMITS.json"), JSON.stringify(limits));
-    expect(() => loadConstitution(dir)).toThrow(/max award/);
+    expect(() => loadConstitution(dir)).toThrow(/maximum per proposal/);
+  });
+
+  it("refuses to boot when the approvals-per-cycle limit drifts", () => {
+    const dir = tempConstitution();
+    const limits = JSON.parse(readFileSync(join(dir, "LIMITS.json"), "utf8"));
+    limits.approvals_per_cycle = 3; // section 7 still says 1
+    writeFileSync(join(dir, "LIMITS.json"), JSON.stringify(limits));
+    expect(() => loadConstitution(dir)).toThrow(/approvals per cycle/);
   });
 
   it("refuses to boot when the constitution file is missing", () => {

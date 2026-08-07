@@ -80,6 +80,12 @@ const MIGRATIONS: string[] = [
   CREATE TABLE free_indexes (
     idx INTEGER PRIMARY KEY
   );
+  `,
+  // Constitution s7: "Approvals per cycle: 1" — a ruling has to know which
+  // cycle it belongs to before that can be counted.
+  `
+  ALTER TABLE rulings ADD COLUMN cycle INTEGER;
+  CREATE INDEX rulings_cycle ON rulings(cycle, verdict);
   `
 ];
 
