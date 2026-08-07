@@ -14,7 +14,17 @@ import { currentCycle, cycleSlotFree } from "./cycles.js";
 import { createClaim, expireClaims } from "./claims.js";
 import { publishRuling, type PostTransport } from "./publisher.js";
 import { getUsdPerGbp } from "./fx.js";
-import { baseToUsd } from "./amounts.js";
+import { baseToUsd, wholeTokensToBase } from "./amounts.js";
+import { base58Decode } from "./base58.js";
+import {
+  SweepConfigError,
+  planSweeps,
+  runSweep,
+  type SweepExecutor,
+  type SweepPlan,
+  type SweepResult
+} from "./sweeper.js";
+import { SolanaSweepExecutor } from "./solana-sweep.js";
 
 export interface JudgeContext {
   capGbp: number;
@@ -50,6 +60,7 @@ export interface RuntimeOverrides {
   chain?: ChainClient | null;
   deriver?: AddressDeriver | null;
   transport?: PostTransport | null;
+  executor?: SweepExecutor | null;
 }
 
 /**
@@ -67,6 +78,7 @@ export class Runtime {
   readonly model: RulingModel | null;
   readonly transport: PostTransport | null;
   readonly log: Logger;
+  private overrideExecutor: SweepExecutor | null | undefined;
   private timers: NodeJS.Timeout[] = [];
 
   private constructor(
@@ -99,6 +111,7 @@ export class Runtime {
           : null;
     // No X transport yet: rulings queue for manual posting (`npm run admin queue`).
     this.transport = o.transport ?? null;
+    this.overrideExecutor = o.executor;
   }
 
   static async create(
@@ -352,6 +365,66 @@ export class Runtime {
     );
   }
 
+  /**
+   * Builds the sweep executor, or explains what is missing. Returns null
+   * rather than throwing when sweeping simply is not configured yet, so the
+   * worker can run without a token minted.
+   */
+  sweepExecutor(): SweepExecutor | null {
+    if (this.overrideExecutor !== undefined) return this.overrideExecutor;
+    const c = this.cfg;
+    if (!c.SWEEP_FEE_PAYER_SECRET) return null;
+    if (!c.RPC_URL || !c.TOKEN_MINT_ADDRESS || !c.TREASURY_ADDRESS || !c.OPS_ADDRESS) {
+      throw new SweepConfigError(
+        "sweeping needs RPC_URL, TOKEN_MINT_ADDRESS, TREASURY_ADDRESS and OPS_ADDRESS"
+      );
+    }
+    return new SolanaSweepExecutor({
+      rpcUrl: c.RPC_URL,
+      mint: c.TOKEN_MINT_ADDRESS,
+      decimals: c.TOKEN_DECIMALS,
+      treasuryAddress: c.TREASURY_ADDRESS,
+      opsAddress: c.OPS_ADDRESS,
+      feePayerSecret: base58Decode(c.SWEEP_FEE_PAYER_SECRET)
+    });
+  }
+
+  /** Whole tokens below which a balance is not worth a transaction. */
+  dustBase(): bigint {
+    return wholeTokensToBase(BigInt(Math.floor(this.cfg.SWEEP_DUST_TOKENS)), this.cfg.TOKEN_DECIMALS);
+  }
+
+  /** What a sweep would move right now, without sending anything. */
+  async sweepPlans(): Promise<SweepPlan[]> {
+    if (!this.chain || !this.cfg.TOKEN_MINT_ADDRESS) return [];
+    return planSweeps(
+      this.db,
+      this.chain,
+      this.cfg.TOKEN_MINT_ADDRESS,
+      this.constitution.limits,
+      this.dustBase(),
+      this.log
+    );
+  }
+
+  async sweepCycle(now: number = Date.now()): Promise<SweepResult[]> {
+    const executor = this.sweepExecutor();
+    if (!executor || !this.chain || !this.deriver || !this.cfg.TOKEN_MINT_ADDRESS) return [];
+    return runSweep(
+      {
+        db: this.db,
+        chain: this.chain,
+        executor,
+        deriveSigningSeed: (i) => this.deriver!.deriveSigningSeed(i),
+        mint: this.cfg.TOKEN_MINT_ADDRESS,
+        limits: this.constitution.limits,
+        dustBase: this.dustBase(),
+        log: this.log
+      },
+      now
+    );
+  }
+
   async publishCycle(): Promise<void> {
     const pending = await this.db.rows<{ docket_id: string }>(
       "SELECT docket_id FROM rulings WHERE post_status = 'unposted' AND review_status <> 'pending_review' LIMIT 5"
@@ -379,7 +452,9 @@ export class Runtime {
       setInterval(safely("price", () => this.oracle.poll()), 60_000),
       setInterval(safely("watch", () => this.watchCycle()), 30_000),
       setInterval(safely("ruling", () => this.rulingCycle()), 60_000),
-      setInterval(safely("publish", () => this.publishCycle()), 60_000)
+      setInterval(safely("publish", () => this.publishCycle()), 60_000),
+      // Slow on purpose: sweeping moves money, and there is no hurry.
+      setInterval(safely("sweep", async () => void (await this.sweepCycle())), 300_000)
     ];
     for (const t of this.timers) t.unref();
     void this.oracle.poll().catch(() => undefined);

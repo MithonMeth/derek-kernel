@@ -5,6 +5,7 @@
  *
  *   admin status                 counts, spend, stuck dockets
  *   admin rule <proposals.json>  push proposals through the pipeline, no payment
+ *   admin sweep [--send]         show what a sweep would move; --send actually moves it
  *   admin pause | unpause        flip intake without a redeploy
  *   admin approve <docket>       countersign a pending approval, mint claim code
  *   admin claim-paid <code> <tx> record the multisig payout
@@ -20,6 +21,7 @@ import {
   createLogger,
   currentCycle,
   cycleSlotFree,
+  describePlan,
   getUsdPerGbp,
   loadConfig,
   markClaimPaid,
@@ -131,6 +133,35 @@ async function main(): Promise<void> {
       console.log(
         `\n${list.length} ruling(s). Today's spend: $${(await todaySpendUsd(db)).toFixed(4)}`
       );
+      break;
+    }
+    case "sweep": {
+      const plans = await runtime.sweepPlans();
+      const whole = (v: bigint): string =>
+        (v / 10n ** BigInt(cfg.TOKEN_DECIMALS)).toLocaleString("en-GB");
+      if (plans.length === 0) {
+        console.log("nothing to sweep");
+        break;
+      }
+      let burn = 0n, treas = 0n, ops = 0n;
+      for (const p of plans) {
+        console.log(describePlan(p, cfg.TOKEN_DECIMALS));
+        burn += p.burn; treas += p.treasury; ops += p.ops;
+      }
+      console.log(`\n${plans.length} docket(s)`);
+      console.log(`  burn     ${whole(burn)}`);
+      console.log(`  treasury ${whole(treas)}`);
+      console.log(`  ops      ${whole(ops)}`);
+
+      if (arg1 !== "--send") {
+        console.log("\nDry run. Nothing sent. Re-run with --send to move it.");
+        break;
+      }
+      const executor = runtime.sweepExecutor();
+      if (!executor) throw new Error("SWEEP_FEE_PAYER_SECRET is not set");
+      const done = await runtime.sweepCycle();
+      console.log(`\nswept ${done.length} of ${plans.length}`);
+      for (const d of done) console.log(`  ${d.docketId}  ${d.signature}`);
       break;
     }
     case "queue": {

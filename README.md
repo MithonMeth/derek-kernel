@@ -43,6 +43,53 @@ packages/api         fastify: /api/*, /r/:docket permalinks, serves the static s
 packages/web         the site (no build step) — `/` and `/log.html`
 ```
 
+## Sweeping
+
+Fees land in one throwaway deposit address per docket. Sweeping empties them
+into the three destinations the site promises — burned, Treasury, ops — at the
+`fee_split` in `LIMITS.json`.
+
+```
+npm run admin -- sweep           # dry run: prints exactly what would move
+npm run admin -- sweep --send    # actually moves it
+```
+
+The rules it works to, all of them tested:
+
+- **Moves the live balance, not the quoted fee.** An underpayment inside
+  tolerance or an overpayment both sweep for what is really there.
+- **The split is exact.** Integer maths, and the Treasury absorbs the
+  remainder, so burn + treasury + ops is always precisely the balance — never
+  a token created or lost.
+- **Re-sweeping is harmless.** The amount always comes from the live balance,
+  so a crash between sending and recording cannot double-spend: the next pass
+  reads zero and marks it done.
+- **A failure leaves the docket unswept** to be retried, rather than marked.
+- **Dust is written off** rather than paying a network fee to move less than
+  it costs.
+- **Half-configured is refused.** A fee payer without destination addresses
+  throws instead of sending somewhere unintended.
+
+The burn is a real SPL burn instruction, not a transfer to an incinerator
+address: it reduces total supply on chain, needs no destination account, and
+is independently verifiable. `BURN_ADDRESS` is consequently unused.
+
+`SWEEP_FEE_PAYER_SECRET` is a base58 secret key holding a little SOL. A deposit
+address holds only tokens, so it cannot pay for its own transaction; Solana
+lets a separate account pay the fee, which avoids pre-funding thousands of
+throwaway addresses. The deposit account still signs as the token owner.
+
+One transaction per docket rather than batched, which contradicts the build
+guide. On Solana a signature costs a fraction of a cent, so isolating a failure
+to a single docket is worth more than the saving — the guide's batching advice
+is really an EVM concern.
+
+> **Not yet exercised against a live chain.** The logic, the split and the
+> failure paths are tested against a fake, and the HD derivation is verified to
+> produce keypairs that actually control the advertised addresses. Sending has
+> never run against a validator. Do a devnet mint and a full sweep there before
+> pointing this at mainnet.
+
 ## Cycles
 
 A cycle is a day, anchored to a `cycle_epoch` fixed on first boot, and it is

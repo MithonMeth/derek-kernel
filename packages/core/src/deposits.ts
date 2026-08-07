@@ -42,6 +42,15 @@ function ed25519PublicKey(privateSeed: Buffer): Buffer {
 
 export interface AddressDeriver {
   deriveAddress(index: number): string;
+  /**
+   * The 32-byte ed25519 seed for a derivation index, which is what signs a
+   * sweep out of that deposit address. Verified to produce the same public
+   * key as deriveAddress — if those ever diverged, funds sent to an
+   * advertised address would be unspendable.
+   *
+   * Never log this, never return it over HTTP, never store it.
+   */
+  deriveSigningSeed(index: number): Buffer;
 }
 
 export class HdAddressDeriver implements AddressDeriver {
@@ -55,8 +64,12 @@ export class HdAddressDeriver implements AddressDeriver {
   }
 
   deriveAddress(index: number): string {
+    return base58Encode(ed25519PublicKey(this.deriveSigningSeed(index)));
+  }
+
+  deriveSigningSeed(index: number): Buffer {
     let node = this.root;
     for (const step of [44, 501, index, 0]) node = childHardened(node, step);
-    return base58Encode(ed25519PublicKey(node.key));
+    return Buffer.from(node.key);
   }
 }

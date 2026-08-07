@@ -17,6 +17,10 @@ const EnvSchema = z.object({
     .string()
     .regex(/^[0-9a-fA-F]{64,128}$/, "hex seed, 64-128 chars")
     .optional(),
+  /** Base58 secret key that pays sweep network fees and destination rent. */
+  SWEEP_FEE_PAYER_SECRET: z.string().optional(),
+  /** Balances at or below this are not worth a transaction. Whole tokens. */
+  SWEEP_DUST_TOKENS: num.pipe(z.number().nonnegative()).default("1" as never),
   RPC_URL: z.string().url().optional(),
   DATABASE_URL: z.string().optional(),
   X_API_KEY: z.string().optional(),
