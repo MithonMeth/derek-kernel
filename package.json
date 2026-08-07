@@ -18,8 +18,10 @@
     "test": "vitest run",
     "dev": "npm run build && node --env-file=.env packages/api/dist/server.js"
   },
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.2.3"
+  },
   "devDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.2.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.1.2",
     "typescript": "^7.0.2",
