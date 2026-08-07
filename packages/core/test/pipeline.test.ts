@@ -56,10 +56,10 @@ describe("ruling pipeline", () => {
     expect(res.costUsd).toBeGreaterThan(0);
   });
 
-  it("refuses an award below the constitution's minimum", async () => {
+  it("approves the kettle the constitution's own register approves", async () => {
     const db = openDb(":memory:");
-    // Section 7 sets a floor of 50. Note this rejects the kettle the
-    // constitution's own register section approves at 34 — see README.
+    // The floor is 1, so a small real object is fundable. This is the case
+    // the register in section 6 and the decision log both turn on.
     const model = stubModel(
       {},
       {
@@ -74,6 +74,29 @@ describe("ruling pipeline", () => {
       db,
       model,
       { ...PROPOSAL, title: "Replacement kettle", amountGbp: 34 },
+      CTX
+    );
+    expect(res.ruling.verdict).toBe("approved");
+    expect(res.ruling.awardGbp).toBe(34);
+    expect(res.ruling.clamped).toBeUndefined();
+  });
+
+  it("refuses an award below the constitution's minimum", async () => {
+    const db = openDb(":memory:");
+    const model = stubModel(
+      {},
+      {
+        verdict: "approved",
+        award_gbp: 0.4,
+        gates_passed: 5,
+        ruling_line: "Fine.",
+        ruling_text: "Approved. 0.40."
+      }
+    );
+    const res = await runRulingPipeline(
+      db,
+      model,
+      { ...PROPOSAL, amountGbp: 0.4 },
       CTX
     );
     expect(res.ruling.verdict).toBe("rejected");

@@ -108,7 +108,7 @@ Enforced in code. Restated so I stay in bounds. If these disagree with the code,
 
 - Maximum per proposal: **5,000**
 - Maximum share of Treasury: **5%**
-- Minimum award: **50**
+- Minimum award: **1**
 - Approvals per cycle: **1**
 - Currency: imaginary
 

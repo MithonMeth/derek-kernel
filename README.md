@@ -13,12 +13,11 @@ are original).
 
 ## Two things in the constitution that need a human decision
 
-**The minimum award rejects the kettle.** Section 7 sets `Minimum award: 50`,
-and the code enforces it. But section 6's own register approves a £34 kettle,
-and so does the decision-log mockup. As written, that ruling is impossible —
-an approval below 50 is converted to a rejection. Either the floor should drop
-(to ~25, keeping the kettle) or the examples should move above it. Right now
-section 7 wins, because it is the section that says it is enforced in code.
+**Settled: the minimum award is 1.** Section 7 originally said 50, which made
+the £34 kettle in section 6's own register — and in the decision-log mockup —
+impossible to approve. The floor is now 1, changed in both `LIMITS.json` and
+section 7 together, because the boot check refuses to start if the prose and
+the enforced number disagree.
 
 **Persona.** The constitution says "I am the Manager"; the site, token and
 domain say DEREK. The build is consistent with reading DEREK as the system

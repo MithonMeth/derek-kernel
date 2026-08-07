@@ -1,7 +1,7 @@
 {
   "version": 1,
   "max_award_gbp": 5000,
-  "min_award_gbp": 50,
+  "min_award_gbp": 1,
   "treasury_fraction_cap": 0.05,
   "approvals_per_cycle": 1,
   "claim_expiry_days": 7,

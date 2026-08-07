@@ -18,7 +18,7 @@ describe("constitution loader", () => {
   it("loads the repo constitution and reports a content hash", () => {
     const c = loadConstitution(realDir);
     expect(c.limits.max_award_gbp).toBe(5000);
-    expect(c.limits.min_award_gbp).toBe(50);
+    expect(c.limits.min_award_gbp).toBe(1);
     expect(c.limits.approvals_per_cycle).toBe(1);
     expect(c.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(c.text).toContain("I am the Manager.");
