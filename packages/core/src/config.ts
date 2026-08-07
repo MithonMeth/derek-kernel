@@ -1,0 +1,48 @@
+import { z } from "zod";
+
+const bool = z
+  .string()
+  .transform((v) => v === "true" || v === "1")
+  .pipe(z.boolean());
+
+const num = z.string().transform(Number).pipe(z.number().finite());
+
+const EnvSchema = z.object({
+  ANTHROPIC_API_KEY: z.string().optional(),
+  TOKEN_MINT_ADDRESS: z.string().optional(),
+  TREASURY_ADDRESS: z.string().optional(),
+  BURN_ADDRESS: z.string().optional(),
+  OPS_ADDRESS: z.string().optional(),
+  DEPOSIT_MASTER_SEED: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64,128}$/, "hex seed, 64-128 chars")
+    .optional(),
+  RPC_URL: z.string().url().optional(),
+  X_API_KEY: z.string().optional(),
+  FEE_TARGET_USD: num.pipe(z.number().positive()).default("0.40" as never),
+  MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
+  MAX_DAILY_API_USD: num.pipe(z.number().nonnegative()).default("25" as never),
+  MAX_SUBMISSIONS_PER_HOUR: num.pipe(z.number().int().positive()).default("400" as never),
+  CLAIM_EXPIRY_DAYS: num.pipe(z.number().int().positive()).default("7" as never),
+  AUTO_APPROVE_UNFLAGGED: bool.default("false" as never),
+  PAUSED: bool.default("true" as never),
+  TOKEN_DECIMALS: num.pipe(z.number().int().min(0).max(18)).default("9" as never),
+  CHAIN_ID: z.string().default("solana"),
+  DATA_DIR: z.string().default("./data"),
+  FAKE_TREASURY_USD: num.pipe(z.number().nonnegative()).optional(),
+  FX_FALLBACK_GBP_USD: num.pipe(z.number().positive()).default("1.30" as never),
+  SITE_URL: z.string().default("https://smokingandalf-8fee83f71c08.herokuapp.com"),
+  EMBED_WORKER: bool.default("true" as never),
+  PORT: num.pipe(z.number().int().positive()).default("3000" as never)
+});
+
+export type Config = z.infer<typeof EnvSchema>;
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  const picked: Record<string, string> = {};
+  for (const key of Object.keys(EnvSchema.shape)) {
+    const v = env[key];
+    if (v !== undefined && v !== "") picked[key] = v;
+  }
+  return EnvSchema.parse(picked);
+}

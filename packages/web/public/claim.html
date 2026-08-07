@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim — DEREK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<main class="wrap claim">
+  <p class="hero__eyebrow"><a href="/" style="color:inherit;text-decoration:none;">← DEREK</a></p>
+  <h1 class="sect__title">Claim an award</h1>
+  <p class="hero__blurb" style="margin-top:14px;">
+    Enter the code from your ruling and the address the tokens should go to.
+    Derek never sees this page. The multisig executes in batches.
+    Unclaimed after 7 days and the money returns to the treasury.
+  </p>
+
+  <form id="claim-form" style="margin-top:30px;">
+    <div class="field">
+      <label class="label" for="c-code">Claim code</label>
+      <input id="c-code" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="32 hex characters, from the ruling">
+    </div>
+    <div class="field">
+      <label class="label" for="c-addr">Payout address</label>
+      <input id="c-addr" type="text" autocomplete="off" spellcheck="false" placeholder="Your Solana address">
+    </div>
+    <div class="field">
+      <label class="label" for="c-addr2">Payout address, again</label>
+      <input id="c-addr2" type="text" autocomplete="off" spellcheck="false" placeholder="The same address. Typos are permanent.">
+      <p class="field__hint" id="c-echo"></p>
+    </div>
+    <button class="btn" id="c-submit" type="submit">Submit claim</button>
+  </form>
+
+  <div class="claim__result" id="c-result"></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function echo() {
+    var a = $("c-addr").value.trim();
+    $("c-echo").textContent = a.length > 12
+      ? "You typed: " + a.slice(0, 6) + " … " + a.slice(-6)
+      : "";
+  }
+  $("c-addr").addEventListener("input", echo);
+
+  $("claim-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var result = $("c-result");
+    result.className = "claim__result";
+    result.textContent = "";
+
+    var payload = {
+      code: $("c-code").value.trim().toLowerCase(),
+      address: $("c-addr").value.trim(),
+      addressConfirm: $("c-addr2").value.trim()
+    };
+    $("c-submit").disabled = true;
+
+    fetch("/api/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
+      .then(function (r) {
+        $("c-submit").disabled = false;
+        result.className = "claim__result is-live" + (r.ok ? "" : " is-error");
+        result.textContent = (r.body && r.body.message) || (r.ok ? "Recorded." : "That did not work.");
+      })
+      .catch(function () {
+        $("c-submit").disabled = false;
+        result.className = "claim__result is-live is-error";
+        result.textContent = "Network error. Try again.";
+      });
+  });
+})();
+</script>
+</body>
+</html>

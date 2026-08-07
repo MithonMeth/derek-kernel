@@ -1,0 +1,7 @@
+{
+  "name": "@derek/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static site. No build step — packages/api serves ./public."
+}

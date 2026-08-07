@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "max_award_gbp": 980,
+  "min_award_gbp": 1,
+  "treasury_fraction_cap": 0.05,
+  "claim_expiry_days": 7,
+  "fee_split": {
+    "burn": 0.5,
+    "treasury": 0.35,
+    "ops": 0.15
+  }
+}

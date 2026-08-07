@@ -1,30 +1,28 @@
 {
-  "name": "smokdlf",
+  "name": "derek",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "heroku-postbuild": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
+  "type": "module",
   "engines": {
     "node": ">=20.9.0"
   },
-  "dependencies": {
-    "next": "16.2.12",
-    "pg": "^8.22.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @derek/core && npm run build -w @derek/worker && npm run build -w @derek/api",
+    "heroku-postbuild": "npm run build -w @derek/core && npm run build -w @derek/worker && npm run build -w @derek/api",
+    "start": "node packages/api/dist/server.js",
+    "start:worker": "node packages/worker/dist/index.js",
+    "admin": "node packages/worker/dist/admin.js",
+    "test": "vitest run",
+    "dev": "npm run build && node --env-file=.env packages/api/dist/server.js"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/pg": "^8.20.3",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.12",
-    "typescript": "^5"
+    "@rolldown/binding-win32-x64-msvc": "^1.2.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

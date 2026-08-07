@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEREK — Departmental Expenditure Review &amp; Evaluation Kernel</title>
+<meta name="description" content="Submit a proposal. Derek reads it once and decides. There is no appeals process because there is nobody else here.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<svg class="inkdefs" aria-hidden="true" focusable="false">
+  <filter id="inkrough">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<header class="stampband">
+  <h1 class="mark">
+    <span class="mark__reg" id="cycle">Cycle —</span>
+    <span class="mark__word">Derek</span>
+    <span class="mark__expand">Departmental Expenditure Review &amp; Evaluation Kernel</span>
+  </h1>
+</header>
+
+<div class="topbar">
+  <div class="topbar__inner">
+    <span>Rulings <b id="stat-rulings">—</b></span>
+    <span>Approved <b id="stat-approved">—</b> · Rate <b id="stat-rate">—</b></span>
+    <span>Burned to date <b id="stat-burned">—</b></span>
+    <span>Treasury <b id="stat-treasury">—</b></span>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero__grid">
+      <div>
+        <p class="hero__eyebrow">Commissioned 1987 · Never decommissioned</p>
+        <p class="hero__blurb">
+          Submit a proposal. Derek reads it once, at some point in the evening, and decides.
+          There is no appeals process because there is nobody else here.
+        </p>
+        <a class="hero__cta" href="#submit">Submit a proposal</a>
+      </div>
+
+      <div class="asset">
+        <div class="asset__slot">
+          <span class="asset__tag">Asset slot · 3D</span>
+          <svg viewBox="0 0 260 210" fill="none" stroke="#1b2220" stroke-width="2.4" aria-hidden="true">
+            <path d="M96 26h84l10 34H86z"/>
+            <path d="M100 34h76M104 44h68"/>
+            <rect x="30" y="60" width="200" height="96" rx="4"/>
+            <rect x="44" y="76" width="72" height="40" rx="3"/>
+            <path d="M52 86h56M52 96h44M52 106h34" stroke-width="2"/>
+            <circle cx="152" cy="86" r="7"/><circle cx="176" cy="86" r="7"/><circle cx="200" cy="86" r="7"/>
+            <circle cx="152" cy="108" r="7"/><circle cx="176" cy="108" r="7"/><circle cx="200" cy="108" r="7"/>
+            <path d="M44 132h172" stroke-width="3"/>
+            <path d="M60 156v18h140v-18"/>
+            <path d="M74 174l12 26h88l12-26" stroke-dasharray="5 5"/>
+            <path d="M30 92c-14 0-14 22 0 22"/>
+          </svg>
+        </div>
+        <p class="asset__note">Placeholder — replace with fax model</p>
+      </div>
+    </div>
+
+    <div class="feed" id="feed" aria-hidden="true" hidden>
+      <div class="feed__track" id="feed-track"></div>
+    </div>
+  </section>
+
+  <section class="sect" id="submit">
+    <div class="sect__head">
+      <h2 class="sect__title">Put it in writing</h2>
+      <span class="sect__meta">Fee burns supply · every ruling posted to X</span>
+    </div>
+
+    <div class="notice" id="paused-notice">
+      Intake is paused. Derek is being commissioned. The forms below will work when he does.
+    </div>
+
+    <div class="submit">
+      <div>
+        <div class="field">
+          <label class="label" for="p-title">Proposal title</label>
+          <input id="p-title" type="text" maxlength="120" placeholder="Replacement kettle">
+          <p class="field__hint">120 characters. Name the thing.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="p-amount">Amount requested (£)</label>
+          <input id="p-amount" type="text" inputmode="decimal" placeholder="34">
+          <p class="field__hint">A number you can justify. "TBC" is a rejection.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="p-body">The proposal</label>
+          <textarea id="p-body" maxlength="2000" placeholder="What is it, what does it cost, and who is doing it."></textarea>
+          <p class="field__hint"><span id="p-count">0</span> / 2000 · Derek reads this once</p>
+        </div>
+
+        <button class="btn" id="p-submit" type="button">Get docket &amp; fee</button>
+
+        <div class="pay" id="pay">
+          <span class="label">Step 1 of 2 · Pay the fee</span>
+          <div class="pay__grid">
+            <div>
+              <p class="pay__meta" style="margin-top:8px;">Send <b id="pay-fee">—</b> $DEREK to your docket address:</p>
+              <div class="pay__addr" id="pay-addr">—</div>
+              <button class="pay__copy" id="pay-copy" type="button">Copy address</button>
+              <p class="pay__meta">
+                Docket <b id="pay-docket">—</b><br>
+                Quote holds for <b id="pay-countdown">15:00</b> · docket voids after 60 min unpaid<br>
+                <span id="pay-status">Waiting for payment…</span>
+              </p>
+            </div>
+            <div class="pay__qr"><img id="pay-qr" alt="Payment QR code" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></div>
+          </div>
+        </div>
+
+        <div class="output" id="output">
+          <span class="output__stamp" id="stamp">Rejected<small id="stamp-id">— · —</small></span>
+          <div class="output__head">
+            <span id="out-docket">Docket —</span>
+            <span id="out-time">—</span>
+          </div>
+          <div class="output__text" id="out-text"></div>
+          <div class="output__burn" id="out-burn"></div>
+        </div>
+      </div>
+
+      <aside class="fee">
+        <span class="label">Submission fee</span>
+        <div class="fee__amount" id="fee-amount">—</div>
+        <div class="fee__usd" id="fee-usd">$DEREK · targeted at ≈ $0.40 · repriced from the market</div>
+
+        <div class="split">
+          <div class="split__row"><span>Burned</span><b>50%</b></div>
+          <div class="split__row"><span>To the Treasury</span><b>35%</b></div>
+          <div class="split__row"><span>Ops &amp; API</span><b>15%</b></div>
+          <div class="split__bar" aria-hidden="true">
+            <i style="width:50%;background:var(--oxblood);"></i>
+            <i style="width:35%;background:var(--stampblue);"></i>
+            <i style="width:15%;background:var(--ink-soft);"></i>
+          </div>
+          <p class="split__note">
+            Half of every fee is sent to the burn address whether Derek approves you or not.
+            Rejection still reduces supply. This is the only sense in which he is on your side.
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="flow" style="margin-top:52px;">
+      <div class="flow__step">
+        <span class="flow__n">Step 01 — Pay</span>
+        <h3 class="flow__h">Send the fee to your docket address</h3>
+        <p class="flow__p">Every submission gets its own deposit address. Send $DEREK to it from wherever you already hold tokens. <b>No wallet connection, no signature, no extension.</b></p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">Step 02 — Ruling</span>
+        <h3 class="flow__h">Derek reads it once</h3>
+        <p class="flow__p">The ruling is published to the ledger and posted to X automatically. Half your fee is burned either way. <b>Rejection still shrinks supply.</b></p>
+      </div>
+      <div class="flow__step">
+        <span class="flow__n">Step 03 — Claim</span>
+        <h3 class="flow__h">Approved rulings issue a claim code</h3>
+        <p class="flow__p">Enter the code and a payout address at <a href="/claim.html" style="color:inherit;">/claim</a>. Derek never sees it. <b>Unclaimed after 7 days and it returns to the treasury.</b></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="ledger">
+    <div class="sect__head">
+      <h2 class="sect__title">The ledger</h2>
+      <span class="sect__meta">Every ruling · unedited · in order</span>
+    </div>
+
+    <div class="ledger" id="ledger-grid"></div>
+    <p class="ledger__empty" id="ledger-empty" hidden>No rulings yet. The first docket will change that.</p>
+
+    <div class="pager">
+      <button class="pager__btn" id="prev" type="button">◀ Newer</button>
+      <span class="pager__count" id="pcount">Page — of —</span>
+      <button class="pager__btn" id="next" type="button">Older ▶</button>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="foot__grid">
+      <div>
+        <a class="foot__link" href="#">X / Twitter</a>
+        <p class="foot__sub">@derek_kernel · not live yet · every ruling, automatically</p>
+      </div>
+      <div>
+        <a class="foot__link" href="#">Telegram</a>
+        <p class="foot__sub">not live yet · appeals ignored here too</p>
+      </div>
+      <div>
+        <span class="label">Contract address</span>
+        <div class="ca">Not yet minted. Announced here and nowhere else first.</div>
+        <p class="foot__sub" style="margin-top:8px;">Constitution: published at launch, as a public repo</p>
+      </div>
+    </div>
+
+    <p class="foot__legal">
+      $DEREK is a meme token with no intrinsic value and no expectation of financial return.
+      Derek holds no keys and executes no payments; rulings are records only.
+      Nothing here is financial advice. You will probably lose money.
+    </p>
+  </footer>
+
+</main>
+
+<script src="/js/site.js"></script>
+</body>
+</html>

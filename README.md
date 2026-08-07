@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DEREK
 
-## Getting Started
+Departmental Expenditure Review & Evaluation Kernel. A single-page site where
+anyone can submit a spending proposal, pay a fee in $DEREK, and receive a
+ruling written by an AI civil servant with a constitution, a £980 cap, and no
+appeals process. Half of every fee is burned whether he approves you or not.
 
-First, run the development server:
+Built from `derek-build-guide.md`. The companion documents it references
+(`ai-treasury-spec.md`, `CONSTITUTION-rude.md` variant C, `test-proposals.json`)
+were not available at build time — the constitution in `constitution/` is a
+marked placeholder, and the hostile-case test fixtures are original. Swap both
+when the real documents land.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Layout
+
+```
+constitution/        CONSTITUTION.md + LIMITS.json — validated at boot; boot refuses on drift
+packages/core        pipeline, guards, db, oracle, deposits, claims, publisher — no HTTP server
+packages/worker      worker entrypoint + admin CLI
+packages/api         fastify: /api/*, /r/:docket permalinks, serves the static site
+packages/web         the site (no build step)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Commands
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+npm test             vitest, all packages — the done-when conditions from the build guide
+npm run build        tsc, all packages
+npm start            API server; embeds the worker loops unless EMBED_WORKER=false
+npm run start:worker standalone worker (only when web and worker share a filesystem)
+npm run admin -- …   status | pause | unpause | approve <docket> | claim-paid <code> <tx> | queue
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+See `.env.example`. Nothing chain- or model-side is required to boot: with no
+`ANTHROPIC_API_KEY` the ruling cycle idles, with no `RPC_URL` payment watching
+idles, with no `DEPOSIT_MASTER_SEED` submissions are refused. `PAUSED=true`
+(the deploy default) halts intake regardless; `npm run admin -- unpause` flips
+it at runtime without a redeploy.
 
-To learn more about Next.js, take a look at the following resources:
+Price oracle: DexScreener `GET /tokens/v1/{chain}/{mint}` (free, no key,
+60 req/min), fallback DexPaprika `GET /networks/{net}/tokens/{mint}` (free).
+FX: frankfurter.dev (free, ECB). Model calls: Haiku 4.5 screening + Sonnet 5
+ruling, ≈$0.01 per submission, capped by `MAX_DAILY_API_USD`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy (Heroku)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`git push heroku main`. One web dyno runs API + worker together
+(`EMBED_WORKER` defaults to true) because dynos do not share a filesystem.
 
-## Deploy on Vercel
+**Known limitation, deliberate for the paused pre-launch phase:** the SQLite
+file lives on the dyno's ephemeral disk, so a restart wipes state. Before
+unpausing with real money in play, move persistence off-dyno (the app already
+has a Heroku Postgres addon to port to) or move hosts. Do not launch on
+ephemeral storage.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Launch order (from the build guide)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Deploy with `PAUSED=true` and `FAKE_TREASURY_USD` set — this is the current state
+2. Run ~50 real submissions through yourself; read every ruling
+3. Publish the constitution repo and swap in CONSTITUTION-rude.md
+4. Mint, seed liquidity, transfer to the treasury address; set the token env vars
+5. Verify the oracle price and that the fee lands near `FEE_TARGET_USD`
+6. Solve persistence (above), then unpause with `MAX_DAILY_API_USD` low
