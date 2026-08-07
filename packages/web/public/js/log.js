@@ -122,10 +122,16 @@
       $("d-cap").textContent = money(Math.min(s.maxAward, share));
     }
 
-    if (s.constitution && s.constitution.commit) {
+    // A deployed slug is not a git checkout, so there may be no commit to
+    // quote. The content hash identifies the document itself, which is the
+    // thing the colophon is actually vouching for.
+    var c = s.constitution || {};
+    if (c.commit) {
       $("colo-commit").textContent =
-        "Rulings issued under constitution commit " +
-        s.constitution.commit.slice(0, 7) + " · variant C";
+        "Rulings issued under constitution commit " + c.commit.slice(0, 7) + " · variant C";
+    } else if (c.sha256) {
+      $("colo-commit").textContent =
+        "Rulings issued under constitution sha256 " + c.sha256.slice(0, 12) + " · variant C";
     }
   }).catch(function () {});
 
