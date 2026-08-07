@@ -9,6 +9,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/site.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/three.module.min.js",
+    "three/addons/": "/vendor/three/jsm/"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -50,8 +58,8 @@
       </div>
 
       <div class="asset">
-        <div class="asset__slot">
-          <span class="asset__tag">Asset slot · 3D</span>
+        <div class="asset__slot" id="asset-slot">
+          <span class="asset__tag">Exhibit A · The machine</span>
           <svg viewBox="0 0 260 210" fill="none" stroke="#1b2220" stroke-width="2.4" aria-hidden="true">
             <path d="M96 26h84l10 34H86z"/>
             <path d="M100 34h76M104 44h68"/>
@@ -66,7 +74,7 @@
             <path d="M30 92c-14 0-14 22 0 22"/>
           </svg>
         </div>
-        <p class="asset__note">Placeholder — replace with fax model</p>
+        <p class="asset__note">IBM Selectric II · drag to turn it</p>
       </div>
     </div>
 
@@ -219,5 +227,15 @@
 </main>
 
 <script src="/js/site.js"></script>
+<script type="module">
+  // After first paint: the paper-and-ink page must not wait on a 3D model.
+  const slot = document.getElementById("asset-slot");
+  const boot = () =>
+    import("/js/hero3d.js")
+      .then((m) => m.mountHeroModel(slot))
+      .catch(() => {});
+  if ("requestIdleCallback" in window) requestIdleCallback(boot, { timeout: 2500 });
+  else window.addEventListener("load", boot);
+</script>
 </body>
 </html>

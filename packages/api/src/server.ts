@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
+import compress from "@fastify/compress";
 import QRCode from "qrcode";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -43,7 +44,24 @@ const db = runtime.db;
 const app = Fastify({ loggerInstance: log, trustProxy: true });
 
 await app.register(rateLimit, { max: 200, timeWindow: 60_000 });
-await app.register(fastifyStatic, { root: webRoot });
+// three.js and the model are ~1.5MB raw; they compress to roughly a third.
+// The .glb is already-compressed PNG texture data, so leave it alone.
+await app.register(compress, {
+  global: true,
+  threshold: 1024,
+  encodings: ["br", "gzip"],
+  customTypes: /^(text\/|application\/(javascript|json|wasm)|image\/svg)/
+});
+await app.register(fastifyStatic, {
+  root: webRoot,
+  setHeaders(res, path) {
+    // Fingerprint-free URLs, so keep HTML revalidating but let the heavy
+    // immutable assets sit in the browser cache.
+    if (/[\\/](vendor|models)[\\/]/.test(path)) {
+      res.setHeader("cache-control", "public, max-age=604800");
+    }
+  }
+});
 
 const esc = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

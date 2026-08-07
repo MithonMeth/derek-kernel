@@ -3,5 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Static site. No build step — packages/api serves ./public."
+  "description": "Static site. No build step — packages/api serves ./public.",
+  "scripts": {
+    "vendor": "node vendor.mjs"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  }
 }

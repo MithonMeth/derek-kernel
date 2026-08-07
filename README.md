@@ -21,6 +21,21 @@ packages/api         fastify: /api/*, /r/:docket permalinks, serves the static s
 packages/web         the site (no build step)
 ```
 
+## The hero model
+
+`packages/web/public/models/typewriter.glb` is an IBM Selectric II (glTF 2.0,
+627KB, 5.4k triangles, no compression extensions). `public/js/hero3d.js` loads
+it after first paint and replaces the line-art placeholder; the placeholder
+stays if WebGL is missing or the model fails, so nothing on the page depends
+on the 3D working. Idle turntable, drag or arrow keys to turn, and it stops
+rendering entirely when off-screen or backgrounded. `prefers-reduced-motion`
+gets a still frame.
+
+three.js is self-hosted rather than loaded from a CDN — no third-party runtime
+dependency and nothing to SRI-hash. `npm run vendor -w @derek/web` re-copies it
+from node_modules after a version bump; the import map in `index.html` points
+the bare `three` specifier at the vendored build.
+
 ## Commands
 
 ```

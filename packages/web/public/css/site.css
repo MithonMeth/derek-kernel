@@ -105,7 +105,17 @@ body{
   position:relative;
   background:rgba(228,231,216,.5);
 }
-.asset__slot svg{width:76%;height:auto;opacity:.72;}
+.asset__slot svg{width:76%;height:auto;opacity:.72;transition:opacity .5s ease;}
+/* The 3D model replaces the line art once it has actually loaded. */
+.asset__slot.is-3d svg{opacity:0;}
+.asset__canvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  cursor:grab;touch-action:pan-y;outline:none;
+  opacity:0;animation:asset-in .6s ease forwards;
+}
+.asset__canvas.is-grabbing{cursor:grabbing;}
+.asset__canvas:focus-visible{outline:3px solid var(--oxblood);outline-offset:3px;}
+@keyframes asset-in{to{opacity:1;}}
 .asset__tag{
   position:absolute;top:-1px;left:-1px;
   font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.16em;
@@ -402,6 +412,8 @@ body{
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto;}
+  .asset__slot svg{transition:none;}
+  .asset__canvas{animation:none;opacity:1;}
   .feed__track{animation:none;padding-left:0;}
   .output.is-typing .output__text::after{animation:none;}
   .output__stamp.is-struck{animation:none;opacity:.84;transform:rotate(-7deg) scale(1);}
