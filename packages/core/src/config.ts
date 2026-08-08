@@ -59,11 +59,34 @@ const EnvSchema = z.object({
 
 export type Config = z.infer<typeof EnvSchema>;
 
+/** Format the deposit seed must satisfy to derive anything. */
+const SEED_RE = /^[0-9a-fA-F]{64,128}$/;
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const picked: Record<string, string> = {};
   for (const key of Object.keys(EnvSchema.shape)) {
     const v = env[key];
-    if (v !== undefined && v !== "") picked[key] = v;
+    // Trimmed because a value pasted into a shell or a dashboard field
+    // arrives with a trailing newline far more often than anyone expects,
+    // and no setting here wants surrounding whitespace.
+    if (v !== undefined && v.trim() !== "") picked[key] = v.trim();
   }
+
+  // A malformed deposit seed used to throw here, which crashed the process
+  // before the HTTP server existed and took the whole public site down -
+  // the ledger, the constitution, every ruling - over one optional secret.
+  // Deposits are the only thing that actually depends on it, so a bad value
+  // now disables deposits and says so, loudly, once.
+  const seed = picked.DEPOSIT_MASTER_SEED;
+  if (seed !== undefined && !SEED_RE.test(seed)) {
+    delete picked.DEPOSIT_MASTER_SEED;
+    console.error(
+      `DEPOSIT_MASTER_SEED is not a ${64}-128 character hex string ` +
+        `(got ${seed.length} characters` +
+        (/\s/.test(seed) ? ", including whitespace - is it two values pasted together?" : "") +
+        "). Deposits are disabled until it is fixed; nothing else is affected."
+    );
+  }
+
   return EnvSchema.parse(picked);
 }
