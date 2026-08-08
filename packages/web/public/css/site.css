@@ -289,6 +289,11 @@ body{
   text-transform:uppercase;color:var(--ink-soft);
 }
 .output__burn b{color:var(--oxblood);font-weight:500;}
+.share{
+  margin-top:14px;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+}
+.share a{color:var(--oxblood);font-weight:500;}
 
 /* ============ FLOW ============ */
 .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink);}

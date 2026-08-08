@@ -26,6 +26,7 @@ interface PublishableRuling {
   fee_tokens: string;
   amount_usd: number;
   award_usd: number | null;
+  x_handle?: string | null;
 }
 
 /**
@@ -51,7 +52,8 @@ async function attachCard(
       amountUsd: row.amount_usd,
       awardUsd: row.award_usd,
       burnedTokens: formatWholeTokens(burnedBase, opts.tokenDecimals),
-      siteHost: opts.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")
+      siteHost: opts.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      xHandle: row.x_handle
     });
     return [await transport.uploadMedia(png)];
   } catch (e) {
@@ -100,7 +102,7 @@ export async function publishRuling(
   log?: Logger
 ): Promise<void> {
   const row = await db.row<PublishableRuling>(
-    `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
+    `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd, p.x_handle
      FROM rulings r
      JOIN dockets d ON d.id = r.docket_id
      JOIN proposals p ON p.id = d.proposal_id

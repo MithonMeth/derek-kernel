@@ -55,3 +55,37 @@ describe("ruling cards", () => {
     expect(dirty.equals(png({ rulingLine: "Rejected. See https://evil.example and @scammer" }))).toBe(false);
   });
 });
+
+describe("submitter handle", () => {
+  it("accepts a plain handle, with or without the @", async () => {
+    const { normaliseHandle } = await import("../src/cards.js");
+    expect(normaliseHandle("@dave")).toBe("dave");
+    expect(normaliseHandle("  dave_99 ")).toBe("dave_99");
+    expect(normaliseHandle("@@dave")).toBe("dave");
+  });
+
+  it("drops anything that is not a real handle", async () => {
+    const { normaliseHandle } = await import("../src/cards.js");
+    for (const bad of [
+      "",
+      null,
+      undefined,
+      "a".repeat(16),            // handles cap at 15
+      "has space",
+      "semi;colon",
+      "emoji😀",
+      "<script>alert(1)</script>",
+      "elon musk (real)"
+    ]) {
+      expect(normaliseHandle(bad as string)).toBeNull();
+    }
+  });
+
+  it("puts a valid handle on the card and a rejected one nowhere", () => {
+    const withHandle = png({ xHandle: "dave" });
+    const without = png({ xHandle: null });
+    expect(withHandle.equals(without)).toBe(false);
+    // Junk is dropped, so the card is byte-identical to having none at all.
+    expect(png({ xHandle: "not a handle!" }).equals(without)).toBe(true);
+  });
+});

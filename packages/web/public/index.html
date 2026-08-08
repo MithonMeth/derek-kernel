@@ -108,6 +108,12 @@
         </div>
 
         <div class="field">
+          <label class="label" for="p-handle">X handle <span style="opacity:.6;">(optional)</span></label>
+          <input id="p-handle" type="text" maxlength="16" placeholder="@yourhandle" autocomplete="off" spellcheck="false">
+          <p class="field__hint">Printed on your ruling card. Not checked, not required, and never tagged in the post.</p>
+        </div>
+
+        <div class="field">
           <label class="label" for="p-body">The proposal</label>
           <textarea id="p-body" maxlength="2000" placeholder="What is it, what does it cost, and who is doing it."></textarea>
           <p class="field__hint"><span id="p-count">0</span> / 2000 · Derek reads this once</p>
@@ -140,6 +146,10 @@
           </div>
           <div class="output__text" id="out-text"></div>
           <div class="output__burn" id="out-burn"></div>
+          <p class="share" id="out-share" hidden>
+            <a id="out-share-link" href="#" target="_blank" rel="noopener">Share this on X</a>
+            for a chance of an airdrop.
+          </p>
         </div>
       </div>
 

@@ -21,6 +21,7 @@ import {
   formatWholeTokens,
   parseBase,
   renderRulingCard,
+  normaliseHandle,
   submitClaim,
   type Config,
   type DocketRow
@@ -74,7 +75,9 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
   const ProposalBody = z.object({
     title: z.string().trim().min(1).max(120),
     amountUsd: z.number().finite().gt(0).lte(1_000_000),
-    body: z.string().trim().min(1).max(2000)
+    body: z.string().trim().min(1).max(2000),
+    // Optional and never verified. Normalised again in the renderer.
+    xHandle: z.string().trim().max(20).optional()
   });
 
   app.post(
@@ -117,8 +120,8 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       const proposalId = randomUUID();
       const p = parsed.data;
       await db.run(
-        "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, $3, $4, $5)",
-        [proposalId, p.title, p.amountUsd, p.body, Date.now()]
+        "INSERT INTO proposals (id, title, amount_usd, body, created_at, x_handle) VALUES ($1, $2, $3, $4, $5, $6)",
+        [proposalId, p.title, p.amountUsd, p.body, Date.now(), normaliseHandle(p.xHandle)]
       );
       const docket = await createDocket(db, runtime.deriver, quote, proposalId);
 
@@ -359,8 +362,9 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       fee_tokens: string;
       amount_usd: number;
       award_usd: number | null;
+      x_handle: string | null;
     }>(
-      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
+      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd, p.x_handle
        FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
        WHERE r.docket_id = $1`,
       [id]
@@ -376,7 +380,8 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       amountUsd: row.amount_usd,
       awardUsd: row.award_usd,
       burnedTokens: formatWholeTokens(burnedBase, cfg.TOKEN_DECIMALS),
-      siteHost: cfg.SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")
+      siteHost: cfg.SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      xHandle: row.x_handle
     });
     // A ruling never changes once issued, so this is safe to cache hard.
     return reply

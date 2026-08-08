@@ -245,6 +245,15 @@ export class AnthropicRulingModel implements RulingModel {
           // Volatile numbers live after the cache breakpoint so the
           // constitution block above stays byte-identical between calls.
           text: [
+            "Every figure here is in US dollars. Write amounts as dollars — $34, not",
+            "£34 and not 34 pounds. The register is British; the currency is not.",
+            "",
+            "You do not know who submitted this. There is no account, no name and no",
+            "identity attached to a submission. Never write that you know, recognise",
+            "or remember a submitter, and never refer to their history: you are being",
+            "published, and telling a stranger you know who they are is alarming and",
+            "untrue. Judge only what is inside the submission tags.",
+            "",
             `Limits in force for this ruling: maximum per proposal ${ctx.limits.max_award_usd};`,
             `minimum award ${ctx.limits.min_award_usd};`,
             `the Treasury share cap currently works out to ${ctx.capUsd.toFixed(2)}.`,

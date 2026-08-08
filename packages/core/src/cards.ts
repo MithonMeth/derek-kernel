@@ -49,6 +49,23 @@ export interface CardRuling {
   awardUsd: number | null;
   burnedTokens: string;
   siteHost: string;
+  /** Self-declared X handle, without the @. Never verified. */
+  xHandle?: string | null;
+}
+
+/**
+ * X handles are 1-15 characters of letters, digits and underscore. Anything
+ * else is dropped rather than drawn.
+ *
+ * Nobody proves they own the handle they type, so this is only ever the
+ * submitter's own claim about themselves. It is printed inside the image
+ * and never in the post text, so X does not turn it into a mention: no
+ * stranger gets tagged, notified, or dragged into a ruling they never saw.
+ */
+export function normaliseHandle(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const h = raw.trim().replace(/^@+/, "");
+  return /^[A-Za-z0-9_]{1,15}$/.test(h) ? h : null;
 }
 
 /** Greedy wrap on measured width — monospace still needs measuring at 2x. */
@@ -141,10 +158,13 @@ export function renderRulingCard(r: CardRuling): Buffer {
   ctx.lineTo(R, 96);
   ctx.stroke();
 
-  // Docket line
+  // Docket line, and the submitter's own handle if they gave one.
   ctx.fillStyle = INK_SOFT;
   ctx.font = "19px PlexMono";
-  ctx.fillText(`DOCKET ${r.docketId.toUpperCase()}`, L, 136);
+  let docketLine = `DOCKET ${r.docketId.toUpperCase()}`;
+  const handle = normaliseHandle(r.xHandle);
+  if (handle) docketLine += `   ·   FOR @${handle}`;
+  ctx.fillText(docketLine, L, 136);
 
   // The ruling line, which is the whole point of the card.
   const line = sanitizePublishedText(r.rulingLine, 180);

@@ -111,6 +111,16 @@
       stamp.className = "output__stamp " + s.cls + " is-struck";
       stamp.firstChild.nodeValue = s.word;
       $("stamp-id").textContent = hhmm(ruling.ruledAt) + " · " + docketId;
+      // The card carries the permalink, so sharing the ruling page is what
+      // actually sends anyone back here.
+      var url = location.origin + "/r/" + encodeURIComponent(docketId);
+      var text = ruling.verdict === "approved"
+        ? "DEREK approved my proposal. He approves about one in fifteen."
+        : "DEREK rejected my proposal:";
+      $("out-share-link").href =
+        "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) +
+        "&url=" + encodeURIComponent(url);
+      $("out-share").hidden = false;
       var burn = "Half the fee is burned either way · full ruling at /r/" + docketId;
       if (ruling.verdict === "approved") {
         burn = "Awarded $" + ruling.awardUsd +
@@ -183,7 +193,12 @@
     fetch("/api/proposals", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: title, amountUsd: amount, body: body })
+      body: JSON.stringify({
+          title: title,
+          amountUsd: amount,
+          body: body,
+          xHandle: ($("p-handle").value || "").trim() || undefined
+        })
     })
       .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
       .then(function (r) {

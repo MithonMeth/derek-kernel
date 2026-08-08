@@ -119,7 +119,9 @@ const MIGRATIONS: string[] = [
   // approved ruling and redirect the award to their own wallet. The code is
   // now released only to the holder of this token, which is handed out once
   // in the submission response and stored nowhere else.
-  `ALTER TABLE dockets ADD COLUMN view_token text;`
+  `ALTER TABLE dockets ADD COLUMN view_token text;`,
+  // Optional, self-declared, and never verified - see the card renderer.
+  `ALTER TABLE proposals ADD COLUMN x_handle text;`
 ];
 
 function isLocal(connectionString: string): boolean {
