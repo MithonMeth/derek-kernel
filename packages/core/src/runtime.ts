@@ -14,7 +14,8 @@ import { currentCycle, cycleSlotFree } from "./cycles.js";
 import { createClaim, expireClaims } from "./claims.js";
 import { publishRuling, type PostTransport } from "./publisher.js";
 import { baseToUsd, wholeTokensToBase } from "./amounts.js";
-import { base58Decode } from "./base58.js";
+import { base58Decode, base58Encode } from "./base58.js";
+import { ed25519 } from "@noble/curves/ed25519";
 import {
   SweepConfigError,
   planSweeps,
@@ -164,6 +165,8 @@ export class Runtime {
       fetchers,
       log
     );
+
+    checkSweepFeePayer(cfg.SWEEP_FEE_PAYER_SECRET, log);
 
     return new Runtime(cfg, constitution, db, oracle, log, o);
   }
@@ -388,11 +391,18 @@ export class Runtime {
     if (this.overrideExecutor !== undefined) return this.overrideExecutor;
     const c = this.cfg;
     if (!c.SWEEP_FEE_PAYER_SECRET) return null;
+    // Half-configured addresses throw: that is an operator error which must
+    // be fixed before anything moves, and staying silent risks sweeping to
+    // an address nobody chose.
     if (!c.RPC_URL || !c.TOKEN_MINT_ADDRESS || !c.TREASURY_ADDRESS || !c.AIRDROP_ADDRESS) {
       throw new SweepConfigError(
         "sweeping needs RPC_URL, TOKEN_MINT_ADDRESS, TREASURY_ADDRESS and AIRDROP_ADDRESS"
       );
     }
+    // A malformed key only disables sweeping. This runs on every cycle, and
+    // a key that cannot be parsed would otherwise raise forever; it is
+    // reported once, loudly, at boot instead.
+    if (!checkSweepFeePayer(c.SWEEP_FEE_PAYER_SECRET, this.log)) return null;
     return new SolanaSweepExecutor({
       rpcUrl: c.RPC_URL,
       mint: c.TOKEN_MINT_ADDRESS,
@@ -484,4 +494,44 @@ export class Runtime {
   stop(): void {
     for (const t of this.timers) clearInterval(t);
   }
+}
+
+/**
+ * Confirms the sweep fee payer key is well-formed at boot and reports the
+ * public key it resolves to, so an operator can check it against the wallet
+ * they actually funded. Without this the key is first decoded during a
+ * sweep, which is the worst moment to discover a typo: fees are already
+ * sitting in deposit addresses by then.
+ *
+ * A bad key does not stop the process. Rulings do not depend on sweeping,
+ * and taking a live public site down over a misconfigured payout wallet is
+ * the worse failure. It is logged at error level and sweeping stays off.
+ */
+export function checkSweepFeePayer(secret: string | undefined, log: Logger): string | null {
+  if (!secret) return null;
+  let bytes: Uint8Array;
+  try {
+    bytes = base58Decode(secret);
+  } catch {
+    log.error("SWEEP_FEE_PAYER_SECRET is not valid base58; sweeping disabled");
+    return null;
+  }
+  if (bytes.length !== 64) {
+    log.error(
+      { length: bytes.length },
+      "SWEEP_FEE_PAYER_SECRET is not a 64-byte Solana keypair; sweeping disabled"
+    );
+    return null;
+  }
+  // A Solana secret key is seed || public key. If the stored half and the
+  // half derived from the seed disagree, the key is corrupt and every
+  // signature it produces would be rejected.
+  const stored = base58Encode(bytes.slice(32));
+  const derived = base58Encode(ed25519.getPublicKey(bytes.slice(0, 32)));
+  if (stored !== derived) {
+    log.error("SWEEP_FEE_PAYER_SECRET is internally inconsistent; sweeping disabled");
+    return null;
+  }
+  log.info({ feePayer: derived }, "sweep fee payer loaded");
+  return derived;
 }
