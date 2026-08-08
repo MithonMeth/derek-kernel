@@ -44,7 +44,7 @@ const EnvSchema = z.object({
   CHAIN_ID: z.string().default("solana"),
   FAKE_TREASURY_USD: num.pipe(z.number().nonnegative()).optional(),
   FX_FALLBACK_GBP_USD: num.pipe(z.number().positive()).default("1.30" as never),
-  SITE_URL: z.string().default("https://smokingandalf-8fee83f71c08.herokuapp.com"),
+  SITE_URL: z.string().default("https://www.derek-kernel.xyz"),
   EMBED_WORKER: bool.default("true" as never),
   PORT: num.pipe(z.number().int().positive()).default("3000" as never)
 });
