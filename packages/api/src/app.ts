@@ -81,7 +81,12 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
         return reply.code(503).send({ error: "paused", message: "Intake is paused. Derek is being commissioned." });
       }
       if (!runtime.deriver) {
-        return reply.code(503).send({ error: "paused", message: "Deposits are not configured yet." });
+        // Publicly reachable once unpaused but before the token exists, so
+        // this is written for a visitor rather than for a developer.
+        return reply.code(503).send({
+          error: "no_deposits",
+          message: "There is nowhere to send a fee yet. The token is not minted."
+        });
       }
       const hourAgo = Date.now() - 3_600_000;
       const recent = Number(
