@@ -3,7 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import compress from "@fastify/compress";
 import QRCode from "qrcode";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -55,6 +55,13 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       }
     }
   });
+
+  /** Constant-time compare; lengths differ often enough to leak otherwise. */
+  function timingSafeEqual(a: string, b: string): boolean {
+    const ab = Buffer.from(a);
+    const bb = Buffer.from(b);
+    return ab.length === bb.length && nodeTimingSafeEqual(ab, bb);
+  }
 
   const esc = (s: string): string =>
     s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -122,6 +129,9 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
 
       return {
         docketId: docket.id,
+        // Shown once, here. It is what later releases the claim code, so the
+        // page stores it locally and the ledger never sees it.
+        viewToken: docket.view_token,
         depositAddress: docket.deposit_address,
         feeTokens: displayTokens(docket.fee_tokens),
         feeBaseUnits: docket.fee_tokens,
@@ -175,14 +185,19 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
         expires_at: number;
       }>("SELECT code, status, award_tokens, expires_at FROM claims WHERE verdict_id = $1", [id]);
       if (claim) {
-        // The claim code is public by design: published in the ruling, the
-        // ledger, and the X post, per the build guide.
+        // Everything about a claim is public except the code itself. The
+        // code is a bearer token for the money: docket ids are sequential,
+        // so publishing it here would let anyone walk the range and
+        // redirect an award to their own wallet before the winner looked.
         out.claim = {
-          code: claim.code,
           status: claim.status,
           awardTokens: displayTokens(claim.award_tokens),
           expiresAt: claim.expires_at
         };
+        const token = (req.query as { t?: string }).t;
+        if (docket.view_token && token && timingSafeEqual(token, docket.view_token)) {
+          (out.claim as Record<string, unknown>).code = claim.code;
+        }
       }
     }
     return out;

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { DB } from "./db.js";
 import { allocateDerivationIndex, freeDerivationIndex, nextDocketNumber } from "./db.js";
 import type { AddressDeriver } from "./deposits.js";
@@ -21,6 +22,7 @@ export interface DocketRow {
   swept_at: number | null;
   judge_attempts: number;
   status: string;
+  view_token: string | null;
 }
 
 export async function createDocket(
@@ -31,12 +33,13 @@ export async function createDocket(
   now: number = Date.now()
 ): Promise<DocketRow> {
   const id = `D-${await nextDocketNumber(db)}`;
+  const viewToken = randomBytes(16).toString("hex");
   const index = await allocateDerivationIndex(db);
   const address = deriver.deriveAddress(index);
   await db.run(
     `INSERT INTO dockets (id, proposal_id, deposit_address, derivation_index, fee_tokens,
-       fee_usd_target, price_usd_at_quote, quoted_at, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_payment')`,
+       fee_usd_target, price_usd_at_quote, quoted_at, status, view_token)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_payment', $9)`,
     [
       id,
       proposalId,
@@ -45,7 +48,8 @@ export async function createDocket(
       quote.feeBase.toString(),
       quote.feeUsdTarget,
       quote.priceUsd,
-      now
+      now,
+      viewToken
     ]
   );
   return (await getDocket(db, id))!;

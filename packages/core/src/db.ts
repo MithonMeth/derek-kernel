@@ -113,7 +113,13 @@ const MIGRATIONS: string[] = [
   // only ever notional and no payout has been made.
   `ALTER TABLE proposals RENAME COLUMN amount_gbp TO amount_usd;
    ALTER TABLE rulings   RENAME COLUMN award_gbp  TO award_usd;
-   ALTER TABLE claims    RENAME COLUMN award_gbp  TO award_usd;`
+   ALTER TABLE claims    RENAME COLUMN award_gbp  TO award_usd;`,
+  // The claim code was returned by the public docket endpoint, and docket
+  // ids are sequential, so anyone could walk D-1..D-n, lift the code for an
+  // approved ruling and redirect the award to their own wallet. The code is
+  // now released only to the holder of this token, which is handed out once
+  // in the submission response and stored nowhere else.
+  `ALTER TABLE dockets ADD COLUMN view_token text;`
 ];
 
 function isLocal(connectionString: string): boolean {

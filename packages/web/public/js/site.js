@@ -140,7 +140,11 @@
   function pollDocket(docketId) {
     clearInterval(pollTimer);
     pollTimer = setInterval(function () {
-      getJson("/api/dockets/" + encodeURIComponent(docketId)).then(function (r) {
+      var tok = null;
+      try { tok = localStorage.getItem("derek.tok." + docketId); } catch (e) {}
+      var url = "/api/dockets/" + encodeURIComponent(docketId) +
+        (tok ? "?t=" + encodeURIComponent(tok) : "");
+      getJson(url).then(function (r) {
         if (!r.ok) return;
         var d = r.body;
         if (d.status === "paid") $("pay-status").textContent = "Fee received · queued for the evening read";
@@ -195,6 +199,12 @@
         $("pay-qr").src = d.qrDataUrl;
         $("pay-status").textContent = "Waiting for payment…";
         startCountdown(d.quoteExpiresAt);
+        // The claim code is released only to whoever holds this. Kept in
+        // localStorage so a refresh, or coming back tomorrow for the
+        // ruling, still recovers it.
+        if (d.viewToken) {
+          try { localStorage.setItem("derek.tok." + d.docketId, d.viewToken); } catch (e) {}
+        }
         pollDocket(d.docketId);
         $("pay").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
       })

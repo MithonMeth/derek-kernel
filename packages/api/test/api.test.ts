@@ -61,6 +61,72 @@ async function makeApp(env: Record<string, string> = {}) {
   return { app, runtime, db };
 }
 
+describe("claim code exposure", () => {
+  /**
+   * Docket ids are sequential (D-1, D-2, ...), so anything the docket
+   * endpoint returns unauthenticated is effectively published. The claim
+   * code is a bearer token for the award: whoever submits it first names
+   * the payout wallet. These tests exist because that was once public.
+   */
+  async function approvedDocket() {
+    const { app, runtime, db } = await makeApp();
+    await runtime.oracle.accept({
+      priceUsd: 0.00004,
+      liquidityUsd: 50_000,
+      source: "test",
+      observedAt: Date.now()
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/proposals",
+      payload: { title: "Replacement kettle", amountUsd: 34, body: "It boils water. Argos." }
+    });
+    const { docketId, viewToken } = res.json();
+    await db.run("UPDATE dockets SET status = 'paid' WHERE id = $1", [docketId]);
+    await runtime.rulingCycle();
+    return { app, docketId, viewToken, db };
+  }
+
+  it("does not hand the claim code to an unauthenticated reader", async () => {
+    const { app, docketId } = await approvedDocket();
+    const body = (await app.inject({ method: "GET", url: `/api/dockets/${docketId}` })).json();
+    // The claim must still be visible - the ledger is the point - but the
+    // code is the part that moves money.
+    expect(body.claim).toBeTruthy();
+    expect(body.claim.status).toBe("open");
+    expect(body.claim.code).toBeUndefined();
+    expect(JSON.stringify(body)).not.toMatch(/[0-9a-f]{32}/);
+  });
+
+  it("releases the code to the holder of the docket's token", async () => {
+    const { app, docketId, viewToken } = await approvedDocket();
+    expect(viewToken).toMatch(/^[0-9a-f]{32}$/);
+    const body = (
+      await app.inject({ method: "GET", url: `/api/dockets/${docketId}?t=${viewToken}` })
+    ).json();
+    expect(body.claim.code).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("refuses a wrong or empty token", async () => {
+    const { app, docketId, viewToken } = await approvedDocket();
+    for (const t of ["", "0".repeat(32), viewToken.slice(0, -1), viewToken + "a"]) {
+      const body = (
+        await app.inject({ method: "GET", url: `/api/dockets/${docketId}?t=${t}` })
+      ).json();
+      expect(body.claim.code).toBeUndefined();
+    }
+  });
+
+  it("one docket's token does not open another's code", async () => {
+    const a = await approvedDocket();
+    const b = await approvedDocket();
+    const body = (
+      await b.app.inject({ method: "GET", url: `/api/dockets/${b.docketId}?t=${a.viewToken}` })
+    ).json();
+    expect(body.claim.code).toBeUndefined();
+  });
+});
+
 describe("api", () => {
   it("serves stats as real values, not pending promises", async () => {
     const { app } = await makeApp();
