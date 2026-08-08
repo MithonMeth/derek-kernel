@@ -14,6 +14,8 @@ export type PriceFetcher = () => Promise<PriceObservation>;
 
 export interface OracleConfig {
   feeTargetUsd: number;
+  /** Flat fee in whole tokens. Wins over feeTargetUsd and needs no price. */
+  feeFixedTokens?: number;
   minLiquidityUsd: number;
   tokenDecimals: number;
   /** After this long without a good tick, stop quoting and pause intake. */
@@ -156,6 +158,23 @@ export class Oracle {
    * rather than ever quoting a fee it cannot defend.
    */
   async quoteFee(now: number = Date.now()): Promise<FeeQuote> {
+    // A flat token fee is priced by fiat, not by the market, so none of the
+    // machinery below applies: no price to be stale, no liquidity to be
+    // thin, no median band to breach. It is the only quote that can be
+    // served before a token has a market.
+    if (this.cfg.feeFixedTokens !== undefined) {
+      const obs = this.current(now);
+      return {
+        feeBase: wholeTokensToBase(BigInt(Math.round(this.cfg.feeFixedTokens)), this.cfg.tokenDecimals),
+        // What it happens to be worth today, when that is knowable. It is
+        // reporting, not the target - nothing is derived from it.
+        feeUsdTarget: obs ? this.cfg.feeFixedTokens * obs.priceUsd : 0,
+        priceUsd: obs?.priceUsd ?? 0,
+        quotedAt: now,
+        frozen: false
+      };
+    }
+
     const lastGood = await kvGet(this.db, "last_good_fee_base");
 
     const obs = this.current(now);

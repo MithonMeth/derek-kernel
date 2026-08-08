@@ -159,6 +159,7 @@ export class Runtime {
       db,
       {
         feeTargetUsd: cfg.FEE_TARGET_USD,
+        feeFixedTokens: cfg.FEE_FIXED_TOKENS,
         minLiquidityUsd: cfg.MIN_LIQUIDITY_USD,
         tokenDecimals: cfg.TOKEN_DECIMALS
       },

@@ -34,6 +34,14 @@ const EnvSchema = z.object({
   X_USER_ID: z.string().optional(),
   /** The fee in dollars. The token amount is derived from the live price. */
   FEE_TARGET_USD: num.pipe(z.number().positive()).default("2" as never),
+  /**
+   * A flat fee in whole $DEREK. When set it wins over FEE_TARGET_USD and
+   * needs no price at all, which is what lets a token price its own
+   * submissions before it has a market deep enough to quote against.
+   * Unset it once the token has liquidity and the fee goes back to
+   * tracking a dollar target, so the real cost holds as the coin moves.
+   */
+  FEE_FIXED_TOKENS: num.pipe(z.number().positive()).optional(),
   MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
   MAX_DAILY_API_USD: num.pipe(z.number().nonnegative()).default("25" as never),
   /** X is pay-per-use at $0.015 a post; this stops a loop burning credits. */

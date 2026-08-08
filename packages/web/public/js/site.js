@@ -50,9 +50,11 @@
       $("fee-amount").textContent = s.fee ? s.fee.tokens : "—";
       // The dollar target comes from config; hardcoding it in the markup let
       // the two drift apart the moment the fee changed.
-      $("fee-usd").textContent = s.fee
-        ? "$DEREK · targeted at ≈ $" + s.fee.usdTarget + " · repriced from the market"
-        : "$DEREK · repriced from the market";
+      // A flat token fee has no dollar target to quote, and before a token
+      // has a market there is no honest figure to put here either.
+      $("fee-usd").textContent = s.fee && s.fee.usdTarget
+        ? "$DEREK · about $" + s.fee.usdTarget.toFixed(2) + " at today's price"
+        : "$DEREK · a flat fee, whatever the coin does";
       if (s.paused) {
         $("paused-notice").classList.add("is-live");
         $("p-submit").disabled = true;
