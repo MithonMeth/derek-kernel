@@ -100,7 +100,14 @@ CREATE SEQUENCE docket_seq START 1;
 CREATE SEQUENCE derivation_seq START 0 MINVALUE 0;
 `;
 
-const MIGRATIONS: string[] = [SCHEMA];
+const MIGRATIONS: string[] = [
+  SCHEMA,
+  // X posting is pay-per-use and needs its own ceiling, kept alongside model
+  // spend so the running cost can be published in one place.
+  `ALTER TABLE spend_log
+     ADD COLUMN x_cost_usd double precision NOT NULL DEFAULT 0,
+     ADD COLUMN x_posts integer NOT NULL DEFAULT 0;`
+];
 
 function isLocal(connectionString: string): boolean {
   return /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);

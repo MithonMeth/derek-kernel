@@ -1,6 +1,7 @@
 import type { DB } from "./db.js";
 import { sanitizePublishedText } from "./guards.js";
 import { formatWholeTokens, parseBase } from "./amounts.js";
+import { recordXPost } from "./spend.js";
 import type { Logger } from "./logger.js";
 
 /**
@@ -89,6 +90,7 @@ export async function publishRuling(
   const text = buildPostText(row, opts);
   try {
     const posted = await transport.post(text, docketId);
+    await recordXPost(db);
     await db.run("UPDATE rulings SET post_status = 'posted', post_id = $1 WHERE docket_id = $2", [
       posted.id,
       docketId
@@ -98,6 +100,7 @@ export async function publishRuling(
     // The call may have succeeded server-side before the failure. Ask.
     const existing = await transport.find(docketId).catch(() => null);
     if (existing) {
+      await recordXPost(db); // it landed after all, so it was billed
       await db.run("UPDATE rulings SET post_status = 'posted', post_id = $1 WHERE docket_id = $2", [
         existing.id,
         docketId

@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   XApiError,
   XTransport,
@@ -8,6 +8,12 @@ import {
   signatureBaseString,
   type XCredentials
 } from "../src/x-transport.js";
+import {
+  recordSpend, recordXPost, todaySpendUsd, todayXSpendUsd, underXDailyCap
+} from "../src/spend.js";
+import { closeTestDbs, testDb } from "./helpers.js";
+
+afterAll(closeTestDbs);
 
 const CREDS: XCredentials = {
   consumerKey: "ckey",
@@ -133,5 +139,28 @@ describe("x transport", () => {
       throw new Error("should not be called");
     });
     expect(await t.find("D-1")).toBeNull();
+  });
+});
+
+describe("x spend cap", () => {
+  it("counts posts and stops publishing once the daily cap is reached", async () => {
+    const db = await testDb();
+    // $0.015 a post against a $0.03 cap: two posts fit, the third does not.
+    expect(await underXDailyCap(db, 0.03)).toBe(true);
+    await recordXPost(db);
+    expect(await underXDailyCap(db, 0.03)).toBe(true);
+    await recordXPost(db);
+    expect(await underXDailyCap(db, 0.03)).toBe(false);
+    expect(await todayXSpendUsd(db)).toBeCloseTo(0.03, 6);
+  });
+
+  it("keeps X spend separate from model spend", async () => {
+    const db = await testDb();
+    await recordSpend(db, 4);
+    await recordXPost(db);
+    expect(await todaySpendUsd(db)).toBe(4);
+    expect(await todayXSpendUsd(db)).toBeCloseTo(0.015, 6);
+    // A big model bill must not silently consume the posting budget.
+    expect(await underXDailyCap(db, 1)).toBe(true);
   });
 });

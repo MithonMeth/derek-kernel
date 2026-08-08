@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   FEE_TARGET_USD: num.pipe(z.number().positive()).default("0.40" as never),
   MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
   MAX_DAILY_API_USD: num.pipe(z.number().nonnegative()).default("25" as never),
+  /** X is pay-per-use at $0.015 a post; this stops a loop burning credits. */
+  MAX_DAILY_X_USD: num.pipe(z.number().nonnegative()).default("5" as never),
   MAX_SUBMISSIONS_PER_HOUR: num.pipe(z.number().int().positive()).default("400" as never),
   CLAIM_EXPIRY_DAYS: num.pipe(z.number().int().positive()).default("7" as never),
   AUTO_APPROVE_UNFLAGGED: bool.default("false" as never),

@@ -8,7 +8,7 @@ import { dexScreenerFetcher, dexPaprikaFetcher } from "./fetchers.js";
 import { SolanaRpcClient, type ChainClient } from "./chain.js";
 import { HdAddressDeriver, type AddressDeriver } from "./deposits.js";
 import { AnthropicRulingModel, RULING_MODEL, runRulingPipeline, type RulingModel } from "./pipeline.js";
-import { underDailyCap } from "./spend.js";
+import { underDailyCap, underXDailyCap, todayXSpendUsd } from "./spend.js";
 import { watchPayments, expireDockets } from "./dockets.js";
 import { currentCycle, cycleSlotFree } from "./cycles.js";
 import { createClaim, expireClaims } from "./claims.js";
@@ -445,6 +445,13 @@ export class Runtime {
   }
 
   async publishCycle(): Promise<void> {
+    if (this.transport && !(await underXDailyCap(this.db, this.cfg.MAX_DAILY_X_USD))) {
+      this.log.warn(
+        { spent: await todayXSpendUsd(this.db), cap: this.cfg.MAX_DAILY_X_USD },
+        "daily X spend cap reached — rulings stay queued until tomorrow"
+      );
+      return;
+    }
     const pending = await this.db.rows<{ docket_id: string }>(
       "SELECT docket_id FROM rulings WHERE post_status = 'unposted' AND review_status <> 'pending_review' LIMIT 5"
     );

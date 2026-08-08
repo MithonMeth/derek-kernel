@@ -51,6 +51,41 @@ export async function todaySpendUsd(db: DB, now: number = Date.now()): Promise<n
   return row?.api_cost_usd ?? 0;
 }
 
+/**
+ * X pay-per-use, as of February 2026. The link price is recorded because it
+ * is the reason the publisher posts no URL — see buildPostText.
+ */
+export const X_POST_COST_USD = 0.015;
+export const X_POST_WITH_LINK_COST_USD = 0.2;
+
+export async function recordXPost(db: DB, now: number = Date.now()): Promise<void> {
+  await db.run(
+    `INSERT INTO spend_log (day, api_cost_usd, calls, x_cost_usd, x_posts)
+     VALUES ($1, 0, 0, $2, 1)
+     ON CONFLICT (day) DO UPDATE SET
+       x_cost_usd = spend_log.x_cost_usd + excluded.x_cost_usd,
+       x_posts = spend_log.x_posts + 1`,
+    [today(now), X_POST_COST_USD]
+  );
+}
+
+export async function todayXSpendUsd(db: DB, now: number = Date.now()): Promise<number> {
+  const row = await db.row<{ x_cost_usd: number }>(
+    "SELECT x_cost_usd FROM spend_log WHERE day = $1",
+    [today(now)]
+  );
+  return row?.x_cost_usd ?? 0;
+}
+
+/** A runaway publish loop would otherwise burn credits unattended. */
+export async function underXDailyCap(
+  db: DB,
+  maxDailyUsd: number,
+  now: number = Date.now()
+): Promise<boolean> {
+  return (await todayXSpendUsd(db, now)) + X_POST_COST_USD <= maxDailyUsd;
+}
+
 /** You cannot cap what you don't measure — the worker checks this every cycle. */
 export async function underDailyCap(
   db: DB,
