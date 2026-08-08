@@ -198,6 +198,24 @@ export class Runtime {
     return baseToUsd(base, this.cfg.TOKEN_DECIMALS, price.priceUsd);
   }
 
+  /**
+   * What the Treasury actually holds, in base units. Unlike its dollar
+   * valuation this needs no price, so it stays truthful when the oracle
+   * cannot quote one - which is most of a token's early life.
+   */
+  async treasuryTokens(): Promise<bigint | null> {
+    if (!this.chain || !this.cfg.TREASURY_ADDRESS || !this.cfg.TOKEN_MINT_ADDRESS) return null;
+    try {
+      return await this.chain.getTokenBalanceBase(
+        this.cfg.TREASURY_ADDRESS,
+        this.cfg.TOKEN_MINT_ADDRESS
+      );
+    } catch (e) {
+      this.log.warn({ err: (e as Error).message }, "treasury balance lookup failed");
+      return null;
+    }
+  }
+
   async watchCycle(now: number = Date.now()): Promise<void> {
     await expireDockets(this.db, now);
     await expireClaims(this.db, now);

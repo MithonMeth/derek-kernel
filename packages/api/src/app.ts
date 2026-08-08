@@ -289,6 +289,10 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       burnedBase += (parseBase(row.fee_tokens) * BigInt(Math.round(burnPct * 100))) / 100n;
     }
 
+    const treasuryBase = await runtime.treasuryTokens();
+    const treasuryTokens =
+      treasuryBase === null ? null : formatWholeTokens(treasuryBase, cfg.TOKEN_DECIMALS);
+
     let fee: { tokens: string; usdTarget: number } | null = null;
     try {
       const q = await runtime.quoteFee();
@@ -303,6 +307,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       approvalRate: rulings ? Math.round((approved / rulings) * 1000) / 10 : 0,
       burned: formatWholeTokens(burnedBase, cfg.TOKEN_DECIMALS),
       treasuryUsd: await runtime.treasuryUsd().catch(() => null),
+      treasuryTokens,
       fee,
       paused: await runtime.isPaused(),
       cycle: await currentCycle(db),

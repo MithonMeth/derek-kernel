@@ -41,7 +41,12 @@
       $("stat-approved").textContent = s.approved;
       $("stat-rate").textContent = s.approvalRate + "%";
       $("stat-burned").textContent = s.burned + " $DEREK";
-      $("stat-treasury").textContent = money(s.treasuryUsd);
+      // The token balance is a fact that holds with or without a price;
+      // the dollar figure needs a market and, before a token graduates,
+      // there is not one.
+      $("stat-treasury").textContent = s.treasuryTokens
+        ? s.treasuryTokens + " $DEREK"
+        : "—";
       $("fee-amount").textContent = s.fee ? s.fee.tokens : "—";
       // The dollar target comes from config; hardcoding it in the markup let
       // the two drift apart the moment the fee changed.
@@ -243,7 +248,7 @@
       $("ledger-empty").hidden = data.total !== 0;
 
       grid.innerHTML = data.items.map(function (item) {
-        var award = item.verdict === "approved" && item.awardGbp !== null
+        var award = item.verdict === "approved" && item.awardUsd !== null
           ? "Awarded <b>$" + esc(item.awardUsd) + "</b> · "
           : "";
         return '<article class="card">' +

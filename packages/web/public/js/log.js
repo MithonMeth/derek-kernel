@@ -70,9 +70,9 @@
       rail += '<span class="rail__held">Held · cycle spent</span>';
     }
 
-    var award = '<span>Requested <b>' + money(item.amountGbp) + "</b></span>";
-    if (item.verdict === "approved" && item.awardGbp !== null) {
-      award += '<span>Awarded <b class="up">' + money(item.awardGbp) + "</b></span>";
+    var award = '<span>Requested <b>' + money(item.amountUsd) + "</b></span>";
+    if (item.verdict === "approved" && item.awardUsd !== null) {
+      award += '<span>Awarded <b class="up">' + money(item.awardUsd) + "</b></span>";
     } else {
       award += '<span>Awarded <b class="down">$0</b></span>';
     }
@@ -92,7 +92,7 @@
       '<div class="entry__rail">' + rail + "</div>" +
       '<div class="entry__body">' +
         '<h2 class="entry__title">' + esc(item.title) + "</h2>" +
-        '<p class="entry__from">submitted anonymously · requested ' + money(item.amountGbp) + "</p>" +
+        '<p class="entry__from">submitted anonymously · requested ' + money(item.amountUsd) + "</p>" +
         (item.proposal ? '<blockquote class="quote">' + esc(item.proposal) + "</blockquote>" : "") +
         '<div class="ruling">' + renderRuling(item.rulingText || item.rulingLine) + "</div>" +
         '<div class="award">' + award + "</div>" +
