@@ -50,7 +50,7 @@ async function makeApp(env: Record<string, string> = {}) {
     deriver: new HdAddressDeriver("ab".repeat(32)),
     model: stubModel({
       verdict: "approved",
-      award_gbp: 180,
+      award_usd: 180,
       gates_passed: 5,
       ruling_line: "Fine.",
       ruling_text: "Approved. 180."
@@ -89,7 +89,7 @@ describe("api", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/proposals",
-      payload: { title: "Kettle", amountGbp: 34, body: "It boils water." }
+      payload: { title: "Kettle", amountUsd: 34, body: "It boils water." }
     });
     expect(res.statusCode).toBe(503);
     expect(res.json().error).toBe("paused");
@@ -100,7 +100,7 @@ describe("api", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/proposals",
-      payload: { title: "", amountGbp: -5, body: "" }
+      payload: { title: "", amountUsd: -5, body: "" }
     });
     expect(res.statusCode).toBe(400);
     const n = await db.row<{ n: string }>("SELECT COUNT(*) AS n FROM proposals");
@@ -145,7 +145,7 @@ describe("api", () => {
       source: "test",
       observedAt: Date.now()
     });
-    await runtime.dryRun({ title: "500 vinyl stickers", amountGbp: 180, body: "A real quote." });
+    await runtime.dryRun({ title: "500 vinyl stickers", amountUsd: 180, body: "A real quote." });
 
     const plain = (await app.inject({ method: "GET", url: "/api/rulings" })).json();
     expect(plain.total).toBe(1);

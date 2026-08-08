@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "max_award_gbp": 5000,
-  "min_award_gbp": 1,
+  "max_award_usd": 5000,
+  "min_award_usd": 1,
   "treasury_fraction_cap": 0.05,
   "approvals_per_cycle": 1,
   "claim_expiry_days": 7,
   "fee_split": {
     "burn": 0.5,
     "treasury": 0.35,
-    "ops": 0.15
+    "airdrops": 0.15
   }
 }

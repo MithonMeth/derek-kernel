@@ -32,7 +32,7 @@ const QUOTE = {
 
 async function seedProposal(db: DB, id = "p1"): Promise<string> {
   await db.run(
-    "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, 34, 'kettle', $3)",
+    "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, 34, 'kettle', $3)",
     [id, "Replacement kettle", T0]
   );
   return id;
@@ -123,7 +123,7 @@ describe("payment watching", () => {
 
 async function seedRuling(db: DB, docketId: string): Promise<void> {
   await db.run(
-    `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, model, ruled_at, review_status)
+    `INSERT INTO rulings (docket_id, verdict, award_usd, ruling_line, ruling_text, model, ruled_at, review_status)
      VALUES ($1, 'rejected', NULL, 'There are nine adjectives and no object.', 'Rejected.', 'test', $2, 'auto')`,
     [docketId, T0]
   );
@@ -140,7 +140,7 @@ describe("claims", () => {
       T0
     );
     await seedRuling(db, docket.id);
-    const claim = await createClaim(db, docket.id, 310, 0.00004, 1.28, 9, 7, T0);
+    const claim = await createClaim(db, docket.id, 310, 0.00004, 9, 7, T0);
     return { db, code: claim.code };
   }
   const GOOD_ADDR = new HdAddressDeriver(SEED).deriveAddress(99);
@@ -148,8 +148,9 @@ describe("claims", () => {
   it("locks the token amount at ruling-time price", async () => {
     const { db, code } = await setup();
     const claim = (await getClaim(db, code))!;
-    // £310 × 1.28 USD/GBP ÷ $0.00004 = 9,920,000 whole tokens.
-    expect(BigInt(claim.award_tokens)).toBe(9_920_000n * 10n ** 9n);
+    // $310 ÷ $0.00004 = 7,750,000 whole tokens. No currency conversion:
+    // awards are quoted in the same dollars the oracle prices the token in.
+    expect(BigInt(claim.award_tokens)).toBe(7_750_000n * 10n ** 9n);
     expect(claim.code).toMatch(/^[0-9a-f]{32}$/);
   });
 
@@ -205,7 +206,7 @@ describe("publisher", () => {
       docketId
     ]);
     const row = (await db.row(
-      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
        FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
        WHERE r.docket_id = $1`,
       [docketId]
@@ -223,7 +224,7 @@ describe("publisher", () => {
     // adds one back without meeting the arithmetic.
     const { db, docketId } = await setup();
     const row = (await db.row(
-      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
        FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
        WHERE r.docket_id = $1`,
       [docketId]

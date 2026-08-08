@@ -52,7 +52,7 @@ async function seedPaidDocket(
 ): Promise<string> {
   const address = deriver.deriveAddress(index);
   await db.run(
-    "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, 't', 100, 'b', $2)",
+    "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, 't', 100, 'b', $2)",
     ["p" + id, at]
   );
   await db.run(
@@ -68,33 +68,33 @@ describe("fee split", () => {
   it("splits exactly, with no tokens created or destroyed", () => {
     for (const total of [0n, 1n, 7n, 999n, 10_000n * UNIT, 123_456_789n]) {
       const s = splitFee(total, SPLIT);
-      expect(s.burn + s.treasury + s.ops).toBe(total);
+      expect(s.burn + s.treasury + s.airdrops).toBe(total);
       expect(s.burn).toBeGreaterThanOrEqual(0n);
       expect(s.treasury).toBeGreaterThanOrEqual(0n);
-      expect(s.ops).toBeGreaterThanOrEqual(0n);
+      expect(s.airdrops).toBeGreaterThanOrEqual(0n);
     }
   });
 
   it("gives the remainder to the Treasury rather than rounding it away", () => {
-    // 7 base units at 50/35/15: burn 3, ops 1, and the odd 3 must land
+    // 7 base units at 50/35/15: burn 3, airdrops 1, and the odd 3 must land
     // somewhere rather than vanish.
     const s = splitFee(7n, SPLIT);
     expect(s.burn).toBe(3n);
-    expect(s.ops).toBe(1n);
+    expect(s.airdrops).toBe(1n);
     expect(s.treasury).toBe(3n);
-    expect(s.burn + s.treasury + s.ops).toBe(7n);
+    expect(s.burn + s.treasury + s.airdrops).toBe(7n);
   });
 
   it("burns half of a whole fee", () => {
     const s = splitFee(10_000n * UNIT, SPLIT);
     expect(s.burn).toBe(5_000n * UNIT);
     expect(s.treasury).toBe(3_500n * UNIT);
-    expect(s.ops).toBe(1_500n * UNIT);
+    expect(s.airdrops).toBe(1_500n * UNIT);
   });
 
   it("refuses a negative balance or a nonsense split", () => {
     expect(() => splitFee(-1n, SPLIT)).toThrow(SweepConfigError);
-    expect(() => splitFee(100n, { burn: 0.9, treasury: 0.9, ops: 0.9 })).toThrow(SweepConfigError);
+    expect(() => splitFee(100n, { burn: 0.9, treasury: 0.9, airdrops: 0.9 })).toThrow(SweepConfigError);
   });
 });
 
@@ -218,7 +218,7 @@ describe("sweeping", () => {
     const db = await testDb();
     const deriver = new HdAddressDeriver(SEED);
     await db.run(
-      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ('p', 't', 1, 'b', $1)",
+      "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ('p', 't', 1, 'b', $1)",
       [T0]
     );
     await db.run(

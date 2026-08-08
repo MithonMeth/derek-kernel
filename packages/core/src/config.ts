@@ -12,7 +12,8 @@ const EnvSchema = z.object({
   TOKEN_MINT_ADDRESS: z.string().optional(),
   TREASURY_ADDRESS: z.string().optional(),
   BURN_ADDRESS: z.string().optional(),
-  OPS_ADDRESS: z.string().optional(),
+  /** Receives the airdrop share of every fee. A wallet of its own. */
+  AIRDROP_ADDRESS: z.string().optional(),
   DEPOSIT_MASTER_SEED: z
     .string()
     .regex(/^[0-9a-fA-F]{64,128}$/, "hex seed, 64-128 chars")
@@ -31,7 +32,8 @@ const EnvSchema = z.object({
   X_ACCESS_SECRET: z.string().optional(),
   /** Numeric account id; only needed to reconcile after a failed post. */
   X_USER_ID: z.string().optional(),
-  FEE_TARGET_USD: num.pipe(z.number().positive()).default("0.40" as never),
+  /** The fee in dollars. The token amount is derived from the live price. */
+  FEE_TARGET_USD: num.pipe(z.number().positive()).default("2" as never),
   MIN_LIQUIDITY_USD: num.pipe(z.number().nonnegative()).default("15000" as never),
   MAX_DAILY_API_USD: num.pipe(z.number().nonnegative()).default("25" as never),
   /** X is pay-per-use at $0.015 a post; this stops a loop burning credits. */
@@ -43,7 +45,6 @@ const EnvSchema = z.object({
   TOKEN_DECIMALS: num.pipe(z.number().int().min(0).max(18)).default("9" as never),
   CHAIN_ID: z.string().default("solana"),
   FAKE_TREASURY_USD: num.pipe(z.number().nonnegative()).optional(),
-  FX_FALLBACK_GBP_USD: num.pipe(z.number().positive()).default("1.30" as never),
   SITE_URL: z.string().default("https://www.derek-kernel.xyz"),
   EMBED_WORKER: bool.default("true" as never),
   PORT: num.pipe(z.number().int().positive()).default("3000" as never)

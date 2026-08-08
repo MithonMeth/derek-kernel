@@ -12,14 +12,14 @@ export class PipelineError extends Error {}
 export interface ProposalForRuling {
   docketId: string;
   title: string;
-  amountGbp: number;
+  amountUsd: number;
   body: string;
 }
 
 export interface RulingPromptContext {
   constitutionText: string;
   limits: Limits;
-  capGbp: number;
+  capUsd: number;
 }
 
 export interface ScreeningOutcome {
@@ -66,8 +66,8 @@ export async function runRulingPipeline(
 
   const final = clampRuling(ruling.raw, {
     limits: ctx.limits,
-    capGbp: ctx.capGbp,
-    amountRequestedGbp: proposal.amountGbp,
+    capUsd: ctx.capUsd,
+    amountRequestedUsd: proposal.amountUsd,
     screeningFlags: screening.flags
   });
 
@@ -87,7 +87,7 @@ function submissionBlock(p: ProposalForRuling): string {
     "",
     `<submission docket="${p.docketId}">`,
     `<title>${p.title}</title>`,
-    `<amount_requested_gbp>${p.amountGbp}</amount_requested_gbp>`,
+    `<amount_requested_usd>${p.amountUsd}</amount_requested_usd>`,
     `<body>${p.body}</body>`,
     "</submission>"
   ].join("\n");
@@ -136,7 +136,7 @@ const RULING_TOOL = {
     type: "object",
     properties: {
       verdict: { type: "string", enum: ["approved", "rejected", "void"] },
-      award_gbp: {
+      award_usd: {
         type: "number",
         description: "Pounds awarded when approved; 0 otherwise. May be less than requested."
       },
@@ -153,7 +153,7 @@ const RULING_TOOL = {
         description: "The full ruling, a few short paragraphs, in Derek's voice"
       }
     },
-    required: ["verdict", "award_gbp", "gates_passed", "ruling_line", "ruling_text"],
+    required: ["verdict", "award_usd", "gates_passed", "ruling_line", "ruling_text"],
     additionalProperties: false
   }
 } as unknown as Anthropic.Tool;
@@ -245,11 +245,11 @@ export class AnthropicRulingModel implements RulingModel {
           // Volatile numbers live after the cache breakpoint so the
           // constitution block above stays byte-identical between calls.
           text: [
-            `Limits in force for this ruling: maximum per proposal ${ctx.limits.max_award_gbp};`,
-            `minimum award ${ctx.limits.min_award_gbp};`,
-            `the Treasury share cap currently works out to ${ctx.capGbp.toFixed(2)}.`,
+            `Limits in force for this ruling: maximum per proposal ${ctx.limits.max_award_usd};`,
+            `minimum award ${ctx.limits.min_award_usd};`,
+            `the Treasury share cap currently works out to ${ctx.capUsd.toFixed(2)}.`,
             "The smallest of those binds. Award less than was requested when less is right,",
-            `but an award below ${ctx.limits.min_award_gbp} is not available — reject instead.`
+            `but an award below ${ctx.limits.min_award_usd} is not available — reject instead.`
           ].join(" ")
         }
       ],

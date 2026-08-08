@@ -106,7 +106,14 @@ const MIGRATIONS: string[] = [
   // spend so the running cost can be published in one place.
   `ALTER TABLE spend_log
      ADD COLUMN x_cost_usd double precision NOT NULL DEFAULT 0,
-     ADD COLUMN x_posts integer NOT NULL DEFAULT 0;`
+     ADD COLUMN x_posts integer NOT NULL DEFAULT 0;`,
+  // Every figure the site quotes moved to dollars. These columns were named
+  // for pounds and now hold dollars, so rename rather than leave the schema
+  // lying about its contents. Values carry over unchanged: the amounts were
+  // only ever notional and no payout has been made.
+  `ALTER TABLE proposals RENAME COLUMN amount_gbp TO amount_usd;
+   ALTER TABLE rulings   RENAME COLUMN award_gbp  TO award_usd;
+   ALTER TABLE claims    RENAME COLUMN award_gbp  TO award_usd;`
 ];
 
 function isLocal(connectionString: string): boolean {

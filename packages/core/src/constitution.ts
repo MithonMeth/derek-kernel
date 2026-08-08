@@ -9,8 +9,8 @@ const LimitsSchema = z
     version: z.number().int().positive(),
     // Section 7 of the constitution. These four are restated in the prose and
     // checked against it at boot.
-    max_award_gbp: z.number().positive(),
-    min_award_gbp: z.number().positive(),
+    max_award_usd: z.number().positive(),
+    min_award_usd: z.number().positive(),
     treasury_fraction_cap: z.number().gt(0).lte(1),
     approvals_per_cycle: z.number().int().positive(),
     // Operational parameters from the build guide, not the constitution, so
@@ -19,12 +19,12 @@ const LimitsSchema = z
     fee_split: z.object({
       burn: z.number().min(0).max(1),
       treasury: z.number().min(0).max(1),
-      ops: z.number().min(0).max(1)
+      airdrops: z.number().min(0).max(1)
     })
   })
-  .refine((l) => l.min_award_gbp <= l.max_award_gbp, "min award exceeds max award")
+  .refine((l) => l.min_award_usd <= l.max_award_usd, "min award exceeds max award")
   .refine(
-    (l) => Math.abs(l.fee_split.burn + l.fee_split.treasury + l.fee_split.ops - 1) < 1e-9,
+    (l) => Math.abs(l.fee_split.burn + l.fee_split.treasury + l.fee_split.airdrops - 1) < 1e-9,
     "fee split must sum to 1"
   );
 
@@ -86,12 +86,12 @@ const percent = (f: number): string => String(Number((f * 100).toFixed(6)));
  */
 export function assertProseMatchesLimits(text: string, limits: Limits): void {
   const expect: Array<[string, string]> = [
-    [`Maximum per proposal: **${group(limits.max_award_gbp)}**`, "maximum per proposal"],
+    [`Maximum per proposal: **${group(limits.max_award_usd)}**`, "maximum per proposal"],
     [
       `Maximum share of Treasury: **${percent(limits.treasury_fraction_cap)}%**`,
       "maximum share of Treasury"
     ],
-    [`Minimum award: **${group(limits.min_award_gbp)}**`, "minimum award"],
+    [`Minimum award: **${group(limits.min_award_usd)}**`, "minimum award"],
     [`Approvals per cycle: **${limits.approvals_per_cycle}**`, "approvals per cycle"]
   ];
   for (const [needle, what] of expect) {

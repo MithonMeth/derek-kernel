@@ -11,7 +11,7 @@
   }
 
   function money(n) {
-    return "£" + Number(n).toLocaleString("en-GB");
+    return "$" + Number(n).toLocaleString("en-US");
   }
 
   function pad(n) { return String(n).padStart(2, "0"); }
@@ -74,7 +74,7 @@
     if (item.verdict === "approved" && item.awardGbp !== null) {
       award += '<span>Awarded <b class="up">' + money(item.awardGbp) + "</b></span>";
     } else {
-      award += '<span>Awarded <b class="down">£0</b></span>';
+      award += '<span>Awarded <b class="down">$0</b></span>';
     }
     if (typeof item.gatesPassed === "number") {
       var cleared = item.gatesPassed === 5;

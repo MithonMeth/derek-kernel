@@ -11,7 +11,7 @@ export class InvalidAddressError extends Error {}
 export interface ClaimRow {
   code: string;
   verdict_id: string;
-  award_gbp: number;
+  award_usd: number;
   award_tokens: string;
   expires_at: number;
   claimed_at: number | null;
@@ -23,28 +23,27 @@ export interface ClaimRow {
 /**
  * The token amount is locked at ruling time — computing it at claim time
  * would let a price move between ruling and claim be farmed. This is the
- * one place GBP becomes tokens for a payout.
+ * one place dollars become tokens for a payout.
  */
 export async function createClaim(
   db: DB,
   docketId: string,
-  awardGbp: number,
+  awardUsd: number,
   priceUsd: number,
-  usdPerGbp: number,
   decimals: number,
   expiryDays: number,
   now: number = Date.now()
 ): Promise<ClaimRow> {
-  const wholeTokens = Math.round((awardGbp * usdPerGbp) / priceUsd);
+  const wholeTokens = Math.round(awardUsd / priceUsd);
   if (!Number.isFinite(wholeTokens) || wholeTokens < 1) {
-    throw new Error(`award of £${awardGbp} converts to no tokens at price ${priceUsd}`);
+    throw new Error(`award of $${awardUsd} converts to no tokens at price ${priceUsd}`);
   }
   const awardBase = wholeTokensToBase(BigInt(wholeTokens), decimals);
   const code = randomBytes(16).toString("hex"); // 32 hex chars, single use
   await db.run(
-    `INSERT INTO claims (code, verdict_id, award_gbp, award_tokens, expires_at, status)
+    `INSERT INTO claims (code, verdict_id, award_usd, award_tokens, expires_at, status)
      VALUES ($1, $2, $3, $4, $5, 'open')`,
-    [code, docketId, awardGbp, awardBase.toString(), now + expiryDays * 86_400_000]
+    [code, docketId, awardUsd, awardBase.toString(), now + expiryDays * 86_400_000]
   );
   return (await getClaim(db, code))!;
 }

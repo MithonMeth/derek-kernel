@@ -6,7 +6,7 @@ import type { Limits } from "./constitution.js";
 /**
  * Fees arrive in one throwaway deposit address per docket and would otherwise
  * stay there. Sweeping empties them into the three destinations the site
- * promises: burned, Treasury, ops.
+ * promises: burned, Treasury, airdrops.
  *
  * This is the only code in the project that moves money, so the rules are:
  * move what is actually there rather than what was quoted, never split a
@@ -17,7 +17,7 @@ import type { Limits } from "./constitution.js";
 export interface FeeSplit {
   burn: number;
   treasury: number;
-  ops: number;
+  airdrops: number;
 }
 
 export interface SweepPlan {
@@ -28,7 +28,7 @@ export interface SweepPlan {
   total: bigint;
   burn: bigint;
   treasury: bigint;
-  ops: bigint;
+  airdrops: bigint;
 }
 
 export interface SweepResult {
@@ -45,7 +45,7 @@ export class SweepConfigError extends Error {}
 
 /**
  * Splits a balance exactly. Percentages are applied with integer maths and
- * the Treasury absorbs the remainder, so burn + treasury + ops is always
+ * the Treasury absorbs the remainder, so burn + treasury + airdrops is always
  * precisely the amount that was there — never a token more or less.
  */
 export function splitFee(total: bigint, split: FeeSplit): Omit<SweepPlan, "docketId" | "derivationIndex" | "address"> {
@@ -56,10 +56,10 @@ export function splitFee(total: bigint, split: FeeSplit): Omit<SweepPlan, "docke
     return BigInt(scaled);
   };
   const burn = (total * pct(split.burn)) / 10_000n;
-  const ops = (total * pct(split.ops)) / 10_000n;
-  const treasury = total - burn - ops; // remainder lands here by construction
+  const airdrops = (total * pct(split.airdrops)) / 10_000n;
+  const treasury = total - burn - airdrops; // remainder lands here by construction
   if (treasury < 0n) throw new SweepConfigError("fee split exceeds 100%");
-  return { total, burn, treasury, ops };
+  return { total, burn, treasury, airdrops };
 }
 
 /**
@@ -150,7 +150,7 @@ export async function runSweep(deps: SweepDeps, now: number = Date.now()): Promi
           docket: plan.docketId,
           burned: plan.burn.toString(),
           treasury: plan.treasury.toString(),
-          ops: plan.ops.toString(),
+          airdrops: plan.airdrops.toString(),
           signature
         },
         "swept"
@@ -172,6 +172,6 @@ export function describePlan(plan: SweepPlan, decimals: number): string {
   return (
     `${plan.docketId}  ${plan.address}\n` +
     `    total ${whole(plan.total)}  ->  burn ${whole(plan.burn)}` +
-    `  treasury ${whole(plan.treasury)}  ops ${whole(plan.ops)}`
+    `  treasury ${whole(plan.treasury)}  airdrops ${whole(plan.airdrops)}`
   );
 }

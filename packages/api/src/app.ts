@@ -65,7 +65,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
 
   const ProposalBody = z.object({
     title: z.string().trim().min(1).max(120),
-    amountGbp: z.number().finite().gt(0).lte(1_000_000),
+    amountUsd: z.number().finite().gt(0).lte(1_000_000),
     body: z.string().trim().min(1).max(2000)
   });
 
@@ -109,8 +109,8 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       const proposalId = randomUUID();
       const p = parsed.data;
       await db.run(
-        "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
-        [proposalId, p.title, p.amountGbp, p.body, Date.now()]
+        "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+        [proposalId, p.title, p.amountUsd, p.body, Date.now()]
       );
       const docket = await createDocket(db, runtime.deriver, quote, proposalId);
 
@@ -150,7 +150,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
 
     const ruling = await db.row<{
       verdict: string;
-      award_gbp: number | null;
+      award_usd: number | null;
       ruling_line: string;
       ruling_text: string;
       gates_passed: number | null;
@@ -161,7 +161,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
     if (ruling) {
       out.ruling = {
         verdict: ruling.verdict,
-        awardGbp: ruling.award_gbp,
+        awardUsd: ruling.award_usd,
         rulingLine: ruling.ruling_line,
         rulingText: ruling.ruling_text,
         gatesPassed: ruling.gates_passed,
@@ -199,7 +199,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
     const rows = await db.rows<{
       docket_id: string;
       verdict: string;
-      award_gbp: number | null;
+      award_usd: number | null;
       ruling_line: string;
       ruling_text: string;
       ruled_at: number;
@@ -209,12 +209,12 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       cycle: number | null;
       fee_tokens: string;
       title: string;
-      amount_gbp: number;
+      amount_usd: number;
       body: string;
     }>(
-      `SELECT r.docket_id, r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at,
+      `SELECT r.docket_id, r.verdict, r.award_usd, r.ruling_line, r.ruling_text, r.ruled_at,
               r.gates_passed, r.flags, r.review_status, r.cycle,
-              d.fee_tokens, p.title, p.amount_gbp, p.body
+              d.fee_tokens, p.title, p.amount_usd, p.body
        FROM rulings r
        JOIN dockets d ON d.id = r.docket_id
        JOIN proposals p ON p.id = d.proposal_id
@@ -231,11 +231,11 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
         const base = {
           docketId: r.docket_id,
           verdict: r.verdict,
-          awardGbp: r.award_gbp,
+          awardUsd: r.award_usd,
           rulingLine: r.ruling_line,
           ruledAt: r.ruled_at,
           title: r.title,
-          amountGbp: r.amount_gbp,
+          amountUsd: r.amount_usd,
           burned: formatWholeTokens(
             (parseBase(r.fee_tokens) * BigInt(Math.round(burnPct * 100))) / 100n,
             cfg.TOKEN_DECIMALS
@@ -291,8 +291,8 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       paused: await runtime.isPaused(),
       cycle: await currentCycle(db),
       daysSinceApproval: await daysSinceLastApproval(db),
-      maxAward: runtime.constitution.limits.max_award_gbp,
-      minAward: runtime.constitution.limits.min_award_gbp,
+      maxAward: runtime.constitution.limits.max_award_usd,
+      minAward: runtime.constitution.limits.min_award_usd,
       constitution: {
         commit: runtime.constitution.commit,
         sha256: runtime.constitution.sha256
@@ -333,21 +333,21 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
     const { id } = req.params as { id: string };
     const row = await db.row<{
       verdict: string;
-      award_gbp: number | null;
+      award_usd: number | null;
       ruling_line: string;
       ruling_text: string;
       ruled_at: number;
       title: string;
-      amount_gbp: number;
+      amount_usd: number;
     }>(
-      `SELECT r.verdict, r.award_gbp, r.ruling_line, r.ruling_text, r.ruled_at, p.title, p.amount_gbp
+      `SELECT r.verdict, r.award_usd, r.ruling_line, r.ruling_text, r.ruled_at, p.title, p.amount_usd
        FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
        WHERE r.docket_id = $1`,
       [id]
     );
     if (!row) return reply.code(404).type("text/html").send("<h1>No such docket.</h1>");
 
-    const verdict = row.verdict === "approved" ? `APPROVED · £${row.award_gbp}` : row.verdict.toUpperCase();
+    const verdict = row.verdict === "approved" ? `APPROVED · $${row.award_usd}` : row.verdict.toUpperCase();
     const title = `Docket ${esc(id)} — ${esc(verdict)} — DEREK`;
     return reply.type("text/html").send(`<!DOCTYPE html>
   <html lang="en-GB"><head>
@@ -361,7 +361,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
   <main class="wrap" style="padding-top:46px;">
     <p class="hero__eyebrow">Docket ${esc(id)} · ${esc(row.verdict)}</p>
     <h1 class="sect__title" style="max-width:24ch;">${esc(row.title)}</h1>
-    <p class="card__foot" style="margin-top:6px;">Requested £${row.amount_gbp}${row.award_gbp !== null ? ` · awarded £${row.award_gbp}` : ""}</p>
+    <p class="card__foot" style="margin-top:6px;">Requested $${row.amount_usd}${row.award_usd !== null ? ` · awarded $${row.award_usd}` : ""}</p>
     <div class="output is-live is-done" style="margin-top:26px;"><div class="output__text">${esc(row.ruling_text)}</div></div>
     <p style="margin-top:26px;"><a class="hero__cta" href="/">Back to DEREK</a></p>
   </main>

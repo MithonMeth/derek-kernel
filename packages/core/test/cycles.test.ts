@@ -23,7 +23,7 @@ async function seedRuling(
   at = T0
 ): Promise<void> {
   await db.run(
-    "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, 't', 100, 'b', $2)",
+    "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, 't', 100, 'b', $2)",
     ["p" + id, at]
   );
   await db.run(
@@ -33,7 +33,7 @@ async function seedRuling(
     [id, "p" + id, at]
   );
   await db.run(
-    `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, model,
+    `INSERT INTO rulings (docket_id, verdict, award_usd, ruling_line, ruling_text, model,
        ruled_at, review_status, cycle)
      VALUES ($1, $2, 100, 'line', 'text', 'test', $3, $4, $5)`,
     [id, verdict, at, review, cycle]

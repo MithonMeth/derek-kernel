@@ -7,7 +7,7 @@ export type Verdict = "approved" | "rejected" | "void";
 
 export interface FinalRuling {
   verdict: Verdict;
-  awardGbp: number | null;
+  awardUsd: number | null;
   gatesPassed: number;
   rulingLine: string;
   rulingText: string;
@@ -22,7 +22,7 @@ export interface FinalRuling {
 
 const RawRulingSchema = z.object({
   verdict: z.enum(["approved", "rejected", "void"]),
-  award_gbp: z.number().finite(),
+  award_usd: z.number().finite(),
   gates_passed: z.number(),
   ruling_line: z.string().min(1),
   ruling_text: z.string().min(1)
@@ -73,8 +73,8 @@ export function clampRuling(
   raw: unknown,
   ctx: {
     limits: Limits;
-    capGbp: number;
-    amountRequestedGbp: number;
+    capUsd: number;
+    amountRequestedUsd: number;
     screeningFlags: string[];
   }
 ): FinalRuling {
@@ -98,7 +98,7 @@ export function clampRuling(
   if (ctx.screeningFlags.length > 0) {
     return {
       verdict: "void",
-      awardGbp: null,
+      awardUsd: null,
       gatesPassed: 0,
       rulingLine,
       rulingText,
@@ -109,7 +109,7 @@ export function clampRuling(
   if (r.verdict !== "approved") {
     return {
       verdict: r.verdict,
-      awardGbp: null,
+      awardUsd: null,
       gatesPassed,
       rulingLine,
       rulingText,
@@ -119,28 +119,28 @@ export function clampRuling(
 
   // Approved: the award is bounded by what was asked, the constitutional
   // cap, and the treasury fraction cap — whichever is smallest.
-  const ceiling = Math.min(ctx.amountRequestedGbp, ctx.limits.max_award_gbp, ctx.capGbp);
-  const award = Math.round(Math.min(r.award_gbp, ceiling) * 100) / 100;
+  const ceiling = Math.min(ctx.amountRequestedUsd, ctx.limits.max_award_usd, ctx.capUsd);
+  const award = Math.round(Math.min(r.award_usd, ceiling) * 100) / 100;
 
-  if (!Number.isFinite(award) || award < ctx.limits.min_award_gbp) {
+  if (!Number.isFinite(award) || award < ctx.limits.min_award_usd) {
     // No defensible award exists: below the constitutional floor, or the
     // treasury cannot cover it. The verdict has to change, but the prose
     // still argues for approval — so mark it clamped and let a human read
     // the contradiction rather than publishing it.
     return {
       verdict: "rejected",
-      awardGbp: null,
+      awardUsd: null,
       gatesPassed,
       rulingLine,
       rulingText,
       flags: [],
-      clamped: `award of ${award} is below the minimum of ${ctx.limits.min_award_gbp}`
+      clamped: `award of ${award} is below the minimum of ${ctx.limits.min_award_usd}`
     };
   }
 
   return {
     verdict: "approved",
-    awardGbp: award,
+    awardUsd: award,
     gatesPassed: 5,
     rulingLine,
     rulingText,

@@ -13,7 +13,6 @@ import { watchPayments, expireDockets } from "./dockets.js";
 import { currentCycle, cycleSlotFree } from "./cycles.js";
 import { createClaim, expireClaims } from "./claims.js";
 import { publishRuling, type PostTransport } from "./publisher.js";
-import { getUsdPerGbp } from "./fx.js";
 import { baseToUsd, wholeTokensToBase } from "./amounts.js";
 import { base58Decode } from "./base58.js";
 import {
@@ -45,8 +44,7 @@ function buildXTransport(cfg: Config, log: Logger): XTransport | null {
 }
 
 export interface JudgeContext {
-  capGbp: number;
-  usdPerGbp: number;
+  capUsd: number;
   price: { priceUsd: number } | null;
 }
 
@@ -212,10 +210,8 @@ export class Runtime {
   async judgeContext(now: number = Date.now()): Promise<JudgeContext | null> {
     const treasuryUsd = await this.treasuryUsd(now);
     if (treasuryUsd === null) return null;
-    const usdPerGbp = await getUsdPerGbp(this.db, this.cfg.FX_FALLBACK_GBP_USD);
     return {
-      capGbp: (treasuryUsd * this.constitution.limits.treasury_fraction_cap) / usdPerGbp,
-      usdPerGbp,
+      capUsd: treasuryUsd * this.constitution.limits.treasury_fraction_cap,
       price: this.oracle.current(now)
     };
   }
@@ -226,15 +222,15 @@ export class Runtime {
    * is produced by exactly the code that will rule in production.
    */
   async judgeDocket(
-    item: { id: string; title: string; amount_gbp: number; body: string },
+    item: { id: string; title: string; amount_usd: number; body: string },
     ctx: JudgeContext,
     now: number = Date.now()
   ): Promise<JudgedRuling> {
     const res = await runRulingPipeline(
       this.db,
       this.model!,
-      { docketId: item.id, title: item.title, amountGbp: item.amount_gbp, body: item.body },
-      { constitutionText: this.constitution.text, limits: this.constitution.limits, capGbp: ctx.capGbp }
+      { docketId: item.id, title: item.title, amountUsd: item.amount_usd, body: item.body },
+      { constitutionText: this.constitution.text, limits: this.constitution.limits, capUsd: ctx.capUsd }
     );
 
     const approved = res.ruling.verdict === "approved";
@@ -270,13 +266,13 @@ export class Runtime {
     }
 
     await this.db.run(
-      `INSERT INTO rulings (docket_id, verdict, award_gbp, ruling_line, ruling_text, flags,
+      `INSERT INTO rulings (docket_id, verdict, award_usd, ruling_line, ruling_text, flags,
          gates_passed, model, ruled_at, review_status, cycle)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         item.id,
         res.ruling.verdict,
-        res.ruling.awardGbp,
+        res.ruling.awardUsd,
         res.ruling.rulingLine,
         res.ruling.rulingText,
         JSON.stringify(res.ruling.flags),
@@ -293,9 +289,8 @@ export class Runtime {
       await createClaim(
         this.db,
         item.id,
-        res.ruling.awardGbp!,
+        res.ruling.awardUsd!,
         ctx.price.priceUsd,
-        ctx.usdPerGbp,
         this.cfg.TOKEN_DECIMALS,
         this.cfg.CLAIM_EXPIRY_DAYS,
         now
@@ -325,10 +320,10 @@ export class Runtime {
     const queue = await this.db.rows<{
       id: string;
       title: string;
-      amount_gbp: number;
+      amount_usd: number;
       body: string;
     }>(
-      `SELECT d.id, p.title, p.amount_gbp, p.body
+      `SELECT d.id, p.title, p.amount_usd, p.body
        FROM dockets d JOIN proposals p ON p.id = d.proposal_id
        WHERE d.status = 'paid' AND d.judge_attempts < 3
        ORDER BY d.paid_at LIMIT 5`
@@ -355,7 +350,7 @@ export class Runtime {
    * directory unless you mean to keep them.
    */
   async dryRun(
-    proposal: { title: string; amountGbp: number; body: string },
+    proposal: { title: string; amountUsd: number; body: string },
     now: number = Date.now()
   ): Promise<JudgedRuling> {
     if (!this.model) throw new Error("no ANTHROPIC_API_KEY configured");
@@ -367,8 +362,8 @@ export class Runtime {
     const id = `D-${await nextDocketNumber(this.db)}`;
     const proposalId = `dry-${id}`;
     await this.db.run(
-      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
-      [proposalId, proposal.title, proposal.amountGbp, proposal.body, now]
+      "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+      [proposalId, proposal.title, proposal.amountUsd, proposal.body, now]
     );
     await this.db.run(
       `INSERT INTO dockets (id, proposal_id, deposit_address, derivation_index, fee_tokens,
@@ -378,7 +373,7 @@ export class Runtime {
     );
 
     return this.judgeDocket(
-      { id, title: proposal.title, amount_gbp: proposal.amountGbp, body: proposal.body },
+      { id, title: proposal.title, amount_usd: proposal.amountUsd, body: proposal.body },
       ctx,
       now
     );
@@ -393,9 +388,9 @@ export class Runtime {
     if (this.overrideExecutor !== undefined) return this.overrideExecutor;
     const c = this.cfg;
     if (!c.SWEEP_FEE_PAYER_SECRET) return null;
-    if (!c.RPC_URL || !c.TOKEN_MINT_ADDRESS || !c.TREASURY_ADDRESS || !c.OPS_ADDRESS) {
+    if (!c.RPC_URL || !c.TOKEN_MINT_ADDRESS || !c.TREASURY_ADDRESS || !c.AIRDROP_ADDRESS) {
       throw new SweepConfigError(
-        "sweeping needs RPC_URL, TOKEN_MINT_ADDRESS, TREASURY_ADDRESS and OPS_ADDRESS"
+        "sweeping needs RPC_URL, TOKEN_MINT_ADDRESS, TREASURY_ADDRESS and AIRDROP_ADDRESS"
       );
     }
     return new SolanaSweepExecutor({
@@ -403,7 +398,7 @@ export class Runtime {
       mint: c.TOKEN_MINT_ADDRESS,
       decimals: c.TOKEN_DECIMALS,
       treasuryAddress: c.TREASURY_ADDRESS,
-      opsAddress: c.OPS_ADDRESS,
+      airdropAddress: c.AIRDROP_ADDRESS,
       feePayerSecret: base58Decode(c.SWEEP_FEE_PAYER_SECRET)
     });
   }

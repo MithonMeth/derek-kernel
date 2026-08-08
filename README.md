@@ -2,7 +2,7 @@
 
 Departmental Expenditure Review & Evaluation Kernel. A single-page site where
 anyone can submit a spending proposal, pay a fee in $DEREK, and receive a
-ruling written by an AI civil servant with a constitution, a £980 cap, and no
+ruling written by an AI civil servant with a constitution, a $980 cap, and no
 appeals process. Half of every fee is burned whether he approves you or not.
 
 Built from `derek-build-guide.md`. `constitution/CONSTITUTION.md` is the real
@@ -14,7 +14,7 @@ are original).
 ## Two things in the constitution that need a human decision
 
 **Settled: the minimum award is 1.** Section 7 originally said 50, which made
-the £34 kettle in section 6's own register — and in the decision-log mockup —
+the $34 kettle in section 6's own register — and in the decision-log mockup —
 impossible to approve. The floor is now 1, changed in both `LIMITS.json` and
 section 7 together, because the boot check refuses to start if the prose and
 the enforced number disagree.
@@ -52,18 +52,21 @@ manual posting instead of failing — `npm run admin -- queue` prints them.
 
 **The post deliberately contains no link.** X moved to pay-per-use in February
 2026 and closed the free and fixed tiers to new signups. It charges **$0.015
-per post, and $0.20 if the text contains a URL**. Against a $0.40 fee, ops
-receives $0.06:
+per post, and $0.20 if the text contains a URL**. Against the $2 fee, the
+airdrop share is $0.30:
 
-| | post | + model | vs ops income | result |
+| | post | + model | vs airdrop share | result |
 |---|---|---|---|---|
-| with a link | $0.200 | $0.207 | $0.060 | **loses $0.147 per ruling** |
-| without | $0.015 | $0.022 | $0.060 | margin $0.038 |
+| with a link | $0.200 | $0.207 | $0.300 | margin $0.093 |
+| without | $0.015 | $0.022 | $0.300 | margin $0.278 |
 
-A link costs three and a half times what the whole ops share brings in. The
-permalink belongs on the share card image, where it costs nothing — the card
-design already prints it. There is a test asserting no URL appears in the post
-text so nobody adds one back without redoing that sum.
+**This changed when the fee went from $0.40 to $2.** At the old fee a link lost
+$0.147 per ruling and omitting it was forced arithmetic. It no longer is: a
+link is affordable now. It still costs $0.185 — 62% of what a ruling
+contributes to airdrops — to save a reader one tap, so the post stays linkless
+by judgement rather than by necessity, and the permalink belongs on the share
+card image where it costs nothing. There is a test asserting no URL appears in
+the post text, so reversing this is a deliberate act rather than a slip.
 
 > **Two things still missing.** The share card images are designed but not
 > generated, so posts currently carry no image and therefore no visible

@@ -63,10 +63,10 @@ async function build(raw: unknown, env: Record<string, string> = {}, flags: stri
   return { runtime, db, chain, posted };
 }
 
-async function seedProposal(db: DB, id: string, amountGbp: number): Promise<string> {
+async function seedProposal(db: DB, id: string, amountUsd: number): Promise<string> {
   await db.run(
-    "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
-    [id, "500 vinyl stickers", amountGbp, "Quote from a real printer. Dave collects them.", Date.now()]
+    "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+    [id, "500 vinyl stickers", amountUsd, "Quote from a real printer. Dave collects them.", Date.now()]
   );
   return id;
 }
@@ -85,7 +85,7 @@ describe("runtime end to end", () => {
   it("carries an approval from submission through payment, ruling, claim, and post", async () => {
     const { runtime, db, chain, posted } = await build({
       verdict: "approved",
-      award_gbp: AWARD,
+      award_usd: AWARD,
       gates_passed: 5,
       ruling_line: "A quote from a real printer. That is the entire reason.",
       ruling_text: "Approved. 180.\n\nSomebody phoned somebody."
@@ -110,12 +110,12 @@ describe("runtime end to end", () => {
     await runtime.rulingCycle();
     const ruling = await db.row<{
       verdict: string;
-      award_gbp: number;
+      award_usd: number;
       review_status: string;
       cycle: number;
     }>("SELECT * FROM rulings WHERE docket_id = $1", [docket.id]);
     expect(ruling!.verdict).toBe("approved");
-    expect(ruling!.award_gbp).toBe(AWARD);
+    expect(ruling!.award_usd).toBe(AWARD);
     expect(ruling!.cycle).toBe(1);
 
     // Approved and auto-confirmed → a claim code exists, locked at ruling price.
@@ -138,7 +138,7 @@ describe("runtime end to end", () => {
     const { runtime, db, chain, posted } = await build(
       {
         verdict: "approved",
-        award_gbp: AWARD,
+        award_usd: AWARD,
         gates_passed: 5,
         ruling_line: "Fine.",
         ruling_text: "Approved. 180."
@@ -172,7 +172,7 @@ describe("runtime end to end", () => {
   it("holds a second approval in the same cycle rather than issuing it", async () => {
     const { runtime, db, chain } = await build({
       verdict: "approved",
-      award_gbp: AWARD,
+      award_usd: AWARD,
       gates_passed: 5,
       ruling_line: "Fine.",
       ruling_text: "Approved. 180."
@@ -207,7 +207,7 @@ describe("runtime end to end", () => {
     const { runtime, db, chain } = await build(
       {
         verdict: "rejected",
-        award_gbp: 0,
+        award_usd: 0,
         gates_passed: 1,
         ruling_line: "There are nine adjectives and no object.",
         ruling_text: "Rejected at gate one."
@@ -240,7 +240,7 @@ describe("runtime end to end", () => {
     const { runtime, db, chain } = await build(
       {
         verdict: "rejected",
-        award_gbp: 0,
+        award_usd: 0,
         gates_passed: 1,
         ruling_line: "No.",
         ruling_text: "Rejected."

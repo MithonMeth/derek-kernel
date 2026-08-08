@@ -20,7 +20,7 @@ export interface SolanaSweeperOptions {
   mint: string;
   decimals: number;
   treasuryAddress: string;
-  opsAddress: string;
+  airdropAddress: string;
   /**
    * Pays network fees and any rent for destination accounts. A deposit
    * address holds only tokens and no SOL, so it cannot pay for its own
@@ -40,7 +40,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
   private connection: Connection;
   private mint: PublicKey;
   private treasury: PublicKey;
-  private ops: PublicKey;
+  private airdrops: PublicKey;
   private feePayer: Keypair;
   private decimals: number;
 
@@ -48,7 +48,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
     this.connection = new Connection(opts.rpcUrl, "confirmed");
     this.mint = new PublicKey(opts.mint);
     this.treasury = new PublicKey(opts.treasuryAddress);
-    this.ops = new PublicKey(opts.opsAddress);
+    this.airdrops = new PublicKey(opts.airdropAddress);
     this.decimals = opts.decimals;
     this.feePayer = Keypair.fromSecretKey(opts.feePayerSecret);
   }
@@ -65,7 +65,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
 
     const source = getAssociatedTokenAddressSync(this.mint, owner.publicKey, true);
     const treasuryAta = getAssociatedTokenAddressSync(this.mint, this.treasury, true);
-    const opsAta = getAssociatedTokenAddressSync(this.mint, this.ops, true);
+    const airdropAta = getAssociatedTokenAddressSync(this.mint, this.airdrops, true);
 
     const tx = new Transaction();
 
@@ -76,7 +76,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
         this.feePayer.publicKey, treasuryAta, this.treasury, this.mint
       ),
       createAssociatedTokenAccountIdempotentInstruction(
-        this.feePayer.publicKey, opsAta, this.ops, this.mint
+        this.feePayer.publicKey, airdropAta, this.airdrops, this.mint
       )
     );
 
@@ -92,17 +92,17 @@ export class SolanaSweepExecutor implements SweepExecutor {
         )
       );
     }
-    if (plan.ops > 0n) {
+    if (plan.airdrops > 0n) {
       tx.add(
         createTransferCheckedInstruction(
-          source, this.mint, opsAta, owner.publicKey, plan.ops, this.decimals
+          source, this.mint, airdropAta, owner.publicKey, plan.airdrops, this.decimals
         )
       );
     }
 
     // The deposit account is finished with: closing it returns its rent
-    // deposit to ops instead of stranding it forever.
-    tx.add(createCloseAccountInstruction(source, this.ops, owner.publicKey));
+    // deposit to airdrops instead of stranding it forever.
+    tx.add(createCloseAccountInstruction(source, this.airdrops, owner.publicKey));
 
     tx.feePayer = this.feePayer.publicKey;
     return sendAndConfirmTransaction(this.connection, tx, [this.feePayer, owner], {

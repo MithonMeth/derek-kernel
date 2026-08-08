@@ -8,7 +8,7 @@ describe("database", () => {
   it("migrates clean and round-trips a docket", async () => {
     const db = await testDb();
     await db.run(
-      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+      "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ($1, $2, $3, $4, $5)",
       ["p1", "Replacement kettle", 34, "It boils water.", Date.now()]
     );
 
@@ -32,7 +32,7 @@ describe("database", () => {
     const db = await testDb();
     const at = 1_800_000_000_123;
     await db.run(
-      "INSERT INTO proposals (id, title, amount_gbp, body, created_at) VALUES ('p', 't', 1, 'b', $1)",
+      "INSERT INTO proposals (id, title, amount_usd, body, created_at) VALUES ('p', 't', 1, 'b', $1)",
       [at]
     );
     const row = await db.row<{ created_at: number }>("SELECT created_at FROM proposals");

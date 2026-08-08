@@ -43,6 +43,11 @@
       $("stat-burned").textContent = s.burned + " $DEREK";
       $("stat-treasury").textContent = money(s.treasuryUsd);
       $("fee-amount").textContent = s.fee ? s.fee.tokens : "—";
+      // The dollar target comes from config; hardcoding it in the markup let
+      // the two drift apart the moment the fee changed.
+      $("fee-usd").textContent = s.fee
+        ? "$DEREK · targeted at ≈ $" + s.fee.usdTarget + " · repriced from the market"
+        : "$DEREK · repriced from the market";
       if (s.paused) {
         $("paused-notice").classList.add("is-live");
         $("p-submit").disabled = true;
@@ -101,7 +106,7 @@
       $("stamp-id").textContent = hhmm(ruling.ruledAt) + " · " + docketId;
       var burn = "Half the fee is burned either way · full ruling at /r/" + docketId;
       if (ruling.verdict === "approved") {
-        burn = "Awarded £" + ruling.awardGbp +
+        burn = "Awarded $" + ruling.awardUsd +
           (claim && claim.code
             ? " · claim code: " + claim.code + " · /claim"
             : " · claim code issues after countersign") +
@@ -167,7 +172,7 @@
     fetch("/api/proposals", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: title, amountGbp: amount, body: body })
+      body: JSON.stringify({ title: title, amountUsd: amount, body: body })
     })
       .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
       .then(function (r) {
@@ -229,14 +234,14 @@
 
       grid.innerHTML = data.items.map(function (item) {
         var award = item.verdict === "approved" && item.awardGbp !== null
-          ? "Awarded <b>£" + esc(item.awardGbp) + "</b> · "
+          ? "Awarded <b>$" + esc(item.awardUsd) + "</b> · "
           : "";
         return '<article class="card">' +
           '<div class="card__top"><span>' + esc(item.docketId) + "</span>" +
           '<span class="card__verdict ' + verdictClass(item.verdict) + '">' + verdictWord(item.verdict) + "</span></div>" +
           '<h3 class="card__title"><a href="/r/' + encodeURIComponent(item.docketId) + '">' + esc(item.title) + "</a></h3>" +
           '<p class="card__line">' + esc(item.rulingLine) + "</p>" +
-          '<p class="card__foot">Requested <b>£' + esc(item.amountGbp) + "</b> · " + award + esc(item.burned) + " burned</p>" +
+          '<p class="card__foot">Requested <b>$' + esc(item.amountUsd) + "</b> · " + award + esc(item.burned) + " burned</p>" +
           "</article>";
       }).join("");
 
@@ -249,7 +254,7 @@
         $("feed").hidden = false;
         $("feed-track").innerHTML = data.items.map(function (item) {
           var v = item.verdict === "approved"
-            ? "<i>APPROVED £" + esc(item.awardGbp) + "</i>"
+            ? "<i>APPROVED $" + esc(item.awardUsd) + "</i>"
             : item.verdict === "void" ? '<span class="v-void">VOID</span>' : "<b>REJECTED</b>";
           return esc(item.docketId) + " " + v + ' "' + esc(item.rulingLine) + '" · &nbsp;&nbsp;';
         }).join("");

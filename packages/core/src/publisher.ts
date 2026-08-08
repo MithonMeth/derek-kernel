@@ -21,8 +21,8 @@ interface PublishableRuling {
   verdict: string;
   ruling_line: string;
   fee_tokens: string;
-  amount_gbp: number;
-  award_gbp: number | null;
+  amount_usd: number;
+  award_usd: number | null;
 }
 
 export function buildPostText(
@@ -33,12 +33,12 @@ export function buildPostText(
   const feeBase = parseBase(r.fee_tokens);
   const burnedBase = (feeBase * BigInt(Math.round(opts.burnFraction * 100))) / 100n;
   const burned = formatWholeTokens(burnedBase, opts.tokenDecimals);
-  const money = (n: number): string => `£${n.toLocaleString("en-GB")}`;
+  const money = (n: number): string => `$${n.toLocaleString("en-US")}`;
   const verdictLine =
-    r.verdict === "approved" ? `APPROVED · ${money(r.award_gbp ?? 0)}` : r.verdict.toUpperCase();
+    r.verdict === "approved" ? `APPROVED · ${money(r.award_usd ?? 0)}` : r.verdict.toUpperCase();
   // Deliberately no URL. Since Feb 2026 X charges $0.015 to post and $0.20
-  // if the text contains a link - more than three times what ops takes from
-  // the whole fee. The permalink lives on the share card image instead,
+  // if the text contains a link - more than the airdrop share of a whole
+  // fee. The permalink lives on the share card image instead,
   // where it costs nothing. Do not add one back without redoing that sum.
   return sanitizePublishedText(
     [
@@ -46,7 +46,7 @@ export function buildPostText(
       "",
       `“${line}”`,
       "",
-      `Requested ${money(r.amount_gbp)} · ${burned} $DEREK burned either way`
+      `Requested ${money(r.amount_usd)} · ${burned} $DEREK burned either way`
     ].join("\n"),
     560
   );
@@ -65,7 +65,7 @@ export async function publishRuling(
   log?: Logger
 ): Promise<void> {
   const row = await db.row<PublishableRuling>(
-    `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+    `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
      FROM rulings r
      JOIN dockets d ON d.id = r.docket_id
      JOIN proposals p ON p.id = d.proposal_id

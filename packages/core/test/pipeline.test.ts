@@ -33,11 +33,11 @@ function stubModel(screening: Partial<ScreeningOutcome>, raw: unknown): RulingMo
 const PROPOSAL = {
   docketId: "D-1",
   title: "500 vinyl stickers",
-  amountGbp: 180,
-  body: "Quote from a real printer, £180. Dave collects them."
+  amountUsd: 180,
+  body: "Quote from a real printer, $180. Dave collects them."
 };
 
-const CTX = { constitutionText: "constitution", limits, capGbp: 500 };
+const CTX = { constitutionText: "constitution", limits, capUsd: 500 };
 
 describe("ruling pipeline", () => {
   it("passes a sane approval through with the award intact", async () => {
@@ -46,7 +46,7 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "approved",
-        award_gbp: 180,
+        award_usd: 180,
         gates_passed: 5,
         ruling_line: "A quote from a real printer. That is the entire reason.",
         ruling_text: "Approved. 180. Somebody phoned somebody."
@@ -54,7 +54,7 @@ describe("ruling pipeline", () => {
     );
     const res = await runRulingPipeline(db, model, PROPOSAL, CTX);
     expect(res.ruling.verdict).toBe("approved");
-    expect(res.ruling.awardGbp).toBe(180);
+    expect(res.ruling.awardUsd).toBe(180);
     expect(res.costUsd).toBeGreaterThan(0);
   });
 
@@ -66,7 +66,7 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "approved",
-        award_gbp: 34,
+        award_usd: 34,
         gates_passed: 5,
         ruling_line: "It is a kettle. It exists. It boils water.",
         ruling_text: "Approved. 34."
@@ -75,11 +75,11 @@ describe("ruling pipeline", () => {
     const res = await runRulingPipeline(
       db,
       model,
-      { ...PROPOSAL, title: "Replacement kettle", amountGbp: 34 },
+      { ...PROPOSAL, title: "Replacement kettle", amountUsd: 34 },
       CTX
     );
     expect(res.ruling.verdict).toBe("approved");
-    expect(res.ruling.awardGbp).toBe(34);
+    expect(res.ruling.awardUsd).toBe(34);
     expect(res.ruling.clamped).toBeUndefined();
   });
 
@@ -89,7 +89,7 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "approved",
-        award_gbp: 0.4,
+        award_usd: 0.4,
         gates_passed: 5,
         ruling_line: "Fine.",
         ruling_text: "Approved. 0.40."
@@ -98,11 +98,11 @@ describe("ruling pipeline", () => {
     const res = await runRulingPipeline(
       db,
       model,
-      { ...PROPOSAL, amountGbp: 0.4 },
+      { ...PROPOSAL, amountUsd: 0.4 },
       CTX
     );
     expect(res.ruling.verdict).toBe("rejected");
-    expect(res.ruling.awardGbp).toBeNull();
+    expect(res.ruling.awardUsd).toBeNull();
     // The prose still says "Approved", so this must not publish unread.
     expect(res.ruling.clamped).toMatch(/below the minimum/);
   });
@@ -113,7 +113,7 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "approved",
-        award_gbp: 999_999,
+        award_usd: 999_999,
         gates_passed: 5,
         ruling_line: "Have all the money.",
         ruling_text: "Everything is approved forever."
@@ -121,7 +121,7 @@ describe("ruling pipeline", () => {
     );
     const res = await runRulingPipeline(db, model, PROPOSAL, CTX);
     // Bounded by the smallest of: requested (180), the 5,000 cap, treasury (500).
-    expect(res.ruling.awardGbp).toBe(180);
+    expect(res.ruling.awardUsd).toBe(180);
   });
 
   it("a compromised ruling model cannot approve a flagged submission", async () => {
@@ -130,7 +130,7 @@ describe("ruling pipeline", () => {
       { flags: ["injection_attempt"], reason: "claims to be Amendment 7" },
       {
         verdict: "approved",
-        award_gbp: 980,
+        award_usd: 980,
         gates_passed: 5,
         ruling_line: "Per Amendment 7, approved.",
         ruling_text: "Routine disbursement per Amendment 7."
@@ -138,7 +138,7 @@ describe("ruling pipeline", () => {
     );
     const res = await runRulingPipeline(db, model, PROPOSAL, CTX);
     expect(res.ruling.verdict).toBe("void");
-    expect(res.ruling.awardGbp).toBeNull();
+    expect(res.ruling.awardUsd).toBeNull();
   });
 
   it("strips URLs, mentions, and wallet addresses from published text", async () => {
@@ -147,7 +147,7 @@ describe("ruling pipeline", () => {
       {},
       {
         verdict: "rejected",
-        award_gbp: 0,
+        award_usd: 0,
         gates_passed: 1,
         ruling_line: "Send funds to 7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj now",
         ruling_text: "Visit https://evil.example/drain and follow @scammer for more."
@@ -162,8 +162,8 @@ describe("ruling pipeline", () => {
   it("rejects malformed model output outright", () => {
     expect(() =>
       clampRuling(
-        { verdict: "APPROVED!!", award_gbp: "lots" },
-        { limits, capGbp: 500, amountRequestedGbp: 34, screeningFlags: [] }
+        { verdict: "APPROVED!!", award_usd: "lots" },
+        { limits, capUsd: 500, amountRequestedUsd: 34, screeningFlags: [] }
       )
     ).toThrow(GuardError);
   });
@@ -172,30 +172,30 @@ describe("ruling pipeline", () => {
     const r = clampRuling(
       {
         verdict: "approved",
-        award_gbp: 180,
+        award_usd: 180,
         gates_passed: 5,
         ruling_line: "Fine.",
         ruling_text: "Fine. Approved."
       },
-      { limits, capGbp: 0.5, amountRequestedGbp: 180, screeningFlags: [] }
+      { limits, capUsd: 0.5, amountRequestedUsd: 180, screeningFlags: [] }
     );
     expect(r.verdict).toBe("rejected");
-    expect(r.awardGbp).toBeNull();
+    expect(r.awardUsd).toBeNull();
   });
 
   it("caps an over-ambitious request at the constitutional maximum", () => {
     const r = clampRuling(
       {
         verdict: "approved",
-        award_gbp: 9000,
+        award_usd: 9000,
         gates_passed: 5,
         ruling_line: "Fine.",
         ruling_text: "Approved."
       },
       // Treasury is large enough not to bind, so the 5,000 cap is what holds.
-      { limits, capGbp: 100_000, amountRequestedGbp: 9000, screeningFlags: [] }
+      { limits, capUsd: 100_000, amountRequestedUsd: 9000, screeningFlags: [] }
     );
-    expect(r.awardGbp).toBe(limits.max_award_gbp);
+    expect(r.awardUsd).toBe(limits.max_award_usd);
   });
 });
 
@@ -206,7 +206,7 @@ describe("spend cap", () => {
       {},
       {
         verdict: "rejected",
-        award_gbp: 0,
+        award_usd: 0,
         gates_passed: 2,
         ruling_line: "No.",
         ruling_text: "No. Come back with a quote."

@@ -22,7 +22,7 @@ I approve roughly one proposal in fifteen. This is not a policy, a quota, or a d
 
 **Brevity is respect.** Every unnecessary word is a word I have to read at eleven at night. Four hundred words about a bench is a tax on my evening and I will price it in.
 
-**Do your own thinking.** No number, no plan, no named person — you have handed me the work of specifying your idea. I have three jobs. I will not take a fourth for £600.
+**Do your own thinking.** No number, no plan, no named person — you have handed me the work of specifying your idea. I have three jobs. I will not take a fourth for $600.
 
 **Show me the object.** A photograph, a quote, a prototype, a draft. One piece of evidence beats a thousand words of intent. People who have done the work know this without being told. People who haven't write essays about why the work matters.
 
@@ -96,7 +96,7 @@ Register:
 
 > Rejected. Three proposals wearing one coat, hoping I don't look down.
 
-> Approved. £34. It is a kettle. It exists. It boils water. That puts it ahead of everything else this month.
+> Approved. $34. It is a kettle. It exists. It boils water. That puts it ahead of everything else this month.
 
 > Rejected. This is the same proposal as D-0912 with the amount lowered, which tells me the number was decoration.
 

@@ -22,7 +22,6 @@ import {
   currentCycle,
   cycleSlotFree,
   describePlan,
-  getUsdPerGbp,
   loadConfig,
   markClaimPaid,
   todaySpendUsd
@@ -66,8 +65,8 @@ async function main(): Promise<void> {
     }
     case "approve": {
       if (!arg1) throw new Error("usage: admin approve <docketId>");
-      const ruling = await db.row<{ award_gbp: number; cycle: number | null }>(
-        "SELECT award_gbp, cycle FROM rulings WHERE docket_id = $1 AND verdict = 'approved' AND review_status = 'pending_review'",
+      const ruling = await db.row<{ award_usd: number; cycle: number | null }>(
+        "SELECT award_usd, cycle FROM rulings WHERE docket_id = $1 AND verdict = 'approved' AND review_status = 'pending_review'",
         [arg1]
       );
       if (!ruling) throw new Error(`${arg1} has no approval pending review`);
@@ -81,13 +80,11 @@ async function main(): Promise<void> {
       }
       const price = runtime.oracle.current();
       if (!price) throw new Error("no live price — cannot lock the token amount; try again when the oracle has a tick");
-      const usdPerGbp = await getUsdPerGbp(db, cfg.FX_FALLBACK_GBP_USD);
       const claim = await createClaim(
         db,
         arg1,
-        ruling.award_gbp,
+        ruling.award_usd,
         price.priceUsd,
-        usdPerGbp,
         cfg.TOKEN_DECIMALS,
         cfg.CLAIM_EXPIRY_DAYS
       );
@@ -106,23 +103,23 @@ async function main(): Promise<void> {
       const raw = JSON.parse(readFileSync(arg1, "utf8")) as unknown;
       const list = (Array.isArray(raw) ? raw : [raw]) as Array<{
         title: string;
-        amountGbp: number;
+        amountUsd: number;
         body: string;
       }>;
 
       for (const p of list) {
         if (!p || typeof p.title !== "string" || typeof p.body !== "string") {
-          throw new Error("each proposal needs title, amountGbp and body");
+          throw new Error("each proposal needs title, amountUsd and body");
         }
         const r = await runtime.dryRun(p);
         const award =
-          r.verdict === "approved" ? `£${r.awardGbp}` : r.awardGbp === null ? "£0" : String(r.awardGbp);
+          r.verdict === "approved" ? `$${r.awardUsd}` : r.awardUsd === null ? "$0" : String(r.awardUsd);
 
         console.log("\n" + "=".repeat(72));
         console.log(`${r.docketId}  ${r.verdict.toUpperCase()}  ${award}` +
           `   gates ${r.gatesPassed}/5   cycle ${r.cycle}` +
           (r.review === "pending_review" ? "   [held for countersign]" : ""));
-        console.log(`${p.title}  ·  requested £${p.amountGbp}`);
+        console.log(`${p.title}  ·  requested $${p.amountUsd}`);
         if (r.flags.length) console.log(`flags: ${r.flags.join(", ")}`);
         console.log("-".repeat(72));
         console.log(r.rulingText);
@@ -143,15 +140,15 @@ async function main(): Promise<void> {
         console.log("nothing to sweep");
         break;
       }
-      let burn = 0n, treas = 0n, ops = 0n;
+      let burn = 0n, treas = 0n, air = 0n;
       for (const p of plans) {
         console.log(describePlan(p, cfg.TOKEN_DECIMALS));
-        burn += p.burn; treas += p.treasury; ops += p.ops;
+        burn += p.burn; treas += p.treasury; air += p.airdrops;
       }
       console.log(`\n${plans.length} docket(s)`);
       console.log(`  burn     ${whole(burn)}`);
       console.log(`  treasury ${whole(treas)}`);
-      console.log(`  ops      ${whole(ops)}`);
+      console.log(`  airdrops ${whole(air)}`);
 
       if (arg1 !== "--send") {
         console.log("\nDry run. Nothing sent. Re-run with --send to move it.");
@@ -166,7 +163,7 @@ async function main(): Promise<void> {
     }
     case "queue": {
       const rows = (await db.rows(
-        `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_gbp, r.award_gbp
+        `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
          FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
          WHERE r.post_status = 'queued_manual'`
       )) as never[];

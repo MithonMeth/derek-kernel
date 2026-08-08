@@ -17,8 +17,8 @@ function tempConstitution(): string {
 describe("constitution loader", () => {
   it("loads the repo constitution and reports a content hash", () => {
     const c = loadConstitution(realDir);
-    expect(c.limits.max_award_gbp).toBe(5000);
-    expect(c.limits.min_award_gbp).toBe(1);
+    expect(c.limits.max_award_usd).toBe(5000);
+    expect(c.limits.min_award_usd).toBe(1);
     expect(c.limits.approvals_per_cycle).toBe(1);
     expect(c.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(c.text).toContain("I am the Manager.");
@@ -41,7 +41,7 @@ describe("constitution loader", () => {
   it("refuses to boot when the prose stops matching the limits", () => {
     const dir = tempConstitution();
     const limits = JSON.parse(readFileSync(join(dir, "LIMITS.json"), "utf8"));
-    limits.max_award_gbp = 1200; // section 7 still says 5,000
+    limits.max_award_usd = 1200; // section 7 still says 5,000
     writeFileSync(join(dir, "LIMITS.json"), JSON.stringify(limits));
     expect(() => loadConstitution(dir)).toThrow(/maximum per proposal/);
   });
