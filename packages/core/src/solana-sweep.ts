@@ -6,6 +6,8 @@ import {
   sendAndConfirmTransaction
 } from "@solana/web3.js";
 import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   createBurnCheckedInstruction,
   createCloseAccountInstruction,
@@ -41,6 +43,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
   private mint: PublicKey;
   private treasury: PublicKey;
   private airdrops: PublicKey;
+  private programId?: PublicKey;
   private feePayer: Keypair;
   private decimals: number;
 
@@ -53,9 +56,28 @@ export class SolanaSweepExecutor implements SweepExecutor {
     this.feePayer = Keypair.fromSecretKey(opts.feePayerSecret);
   }
 
+  /**
+   * Which token program owns the mint, read from the mint account itself
+   * and cached. Detected rather than configured: pump.fun mints are
+   * Token-2022, older ones are the classic program, and the difference is
+   * invisible in the address. Every instruction below, and the associated
+   * token address itself, is derived from this - point it at the wrong
+   * program and the sweep targets an account that does not exist.
+   */
+  private async tokenProgram(): Promise<PublicKey> {
+    if (this.programId) return this.programId;
+    const info = await this.connection.getAccountInfo(this.mint, "confirmed");
+    if (!info) throw new SweepConfigError(`mint ${this.mint.toBase58()} not found on chain`);
+    if (!info.owner.equals(TOKEN_PROGRAM_ID) && !info.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+      throw new SweepConfigError(`mint is owned by an unknown token program: ${info.owner.toBase58()}`);
+    }
+    this.programId = info.owner;
+    return this.programId;
+  }
+
   async execute(plan: SweepPlan, signingSeed: Buffer): Promise<string> {
     const owner = Keypair.fromSeed(signingSeed);
-    const tx = this.buildTransaction(plan, owner);
+    const tx = this.buildTransaction(plan, owner, await this.tokenProgram());
     return sendAndConfirmTransaction(this.connection, tx, [this.feePayer, owner], {
       commitment: "confirmed",
       maxRetries: 3
@@ -66,7 +88,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
    * Split out from execute() so the instruction list - which is the part
    * that decides where money goes - can be asserted without a chain.
    */
-  buildTransaction(plan: SweepPlan, owner: Keypair): Transaction {
+  buildTransaction(plan: SweepPlan, owner: Keypair, programId: PublicKey): Transaction {
     if (owner.publicKey.toBase58() !== plan.address) {
       // The advertised address and the signing key must be the same account.
       // If they ever diverge, stop rather than send into the void.
@@ -75,9 +97,9 @@ export class SolanaSweepExecutor implements SweepExecutor {
       );
     }
 
-    const source = getAssociatedTokenAddressSync(this.mint, owner.publicKey, true);
-    const treasuryAta = getAssociatedTokenAddressSync(this.mint, this.treasury, true);
-    const airdropAta = getAssociatedTokenAddressSync(this.mint, this.airdrops, true);
+    const source = getAssociatedTokenAddressSync(this.mint, owner.publicKey, true, programId);
+    const treasuryAta = getAssociatedTokenAddressSync(this.mint, this.treasury, true, programId);
+    const airdropAta = getAssociatedTokenAddressSync(this.mint, this.airdrops, true, programId);
 
     const tx = new Transaction();
 
@@ -85,29 +107,29 @@ export class SolanaSweepExecutor implements SweepExecutor {
     // than a failed transaction, so this is safe to include on every sweep.
     tx.add(
       createAssociatedTokenAccountIdempotentInstruction(
-        this.feePayer.publicKey, treasuryAta, this.treasury, this.mint
+        this.feePayer.publicKey, treasuryAta, this.treasury, this.mint, programId
       ),
       createAssociatedTokenAccountIdempotentInstruction(
-        this.feePayer.publicKey, airdropAta, this.airdrops, this.mint
+        this.feePayer.publicKey, airdropAta, this.airdrops, this.mint, programId
       )
     );
 
     if (plan.burn > 0n) {
       tx.add(
-        createBurnCheckedInstruction(source, this.mint, owner.publicKey, plan.burn, this.decimals)
+        createBurnCheckedInstruction(source, this.mint, owner.publicKey, plan.burn, this.decimals, [], programId)
       );
     }
     if (plan.treasury > 0n) {
       tx.add(
         createTransferCheckedInstruction(
-          source, this.mint, treasuryAta, owner.publicKey, plan.treasury, this.decimals
+          source, this.mint, treasuryAta, owner.publicKey, plan.treasury, this.decimals, [], programId
         )
       );
     }
     if (plan.airdrops > 0n) {
       tx.add(
         createTransferCheckedInstruction(
-          source, this.mint, airdropAta, owner.publicKey, plan.airdrops, this.decimals
+          source, this.mint, airdropAta, owner.publicKey, plan.airdrops, this.decimals, [], programId
         )
       );
     }
@@ -122,7 +144,7 @@ export class SolanaSweepExecutor implements SweepExecutor {
     // draining and needing to be topped up by hand. The two destination
     // token accounts are created once, out of the same wallet, and are
     // no-ops on every sweep after the first.
-    tx.add(createCloseAccountInstruction(source, this.feePayer.publicKey, owner.publicKey));
+    tx.add(createCloseAccountInstruction(source, this.feePayer.publicKey, owner.publicKey, [], programId));
 
     tx.feePayer = this.feePayer.publicKey;
     return tx;
