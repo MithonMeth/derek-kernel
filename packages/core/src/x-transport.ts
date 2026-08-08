@@ -85,6 +85,8 @@ export class XApiError extends Error {
 type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
 const POST_URL = "https://api.x.com/2/tweets";
+// Media still lives on the v1.1 host; there is no v2 upload endpoint.
+const MEDIA_URL = "https://upload.twitter.com/1.1/media/upload.json";
 
 export class XTransport implements PostTransport {
   constructor(
@@ -93,12 +95,41 @@ export class XTransport implements PostTransport {
     private doFetch: FetchLike = fetch
   ) {}
 
-  async post(text: string, _key: string): Promise<{ id: string }> {
+  /**
+   * Uploads a PNG and returns its media id.
+   *
+   * OAuth 1.0a only folds body parameters into the signature for
+   * form-urlencoded bodies. This is multipart, so the base string covers
+   * the oauth_* parameters alone — signing the image bytes would produce a
+   * valid-looking header that X rejects.
+   */
+  async uploadMedia(png: Buffer): Promise<string> {
+    const auth = oauth1Header("POST", MEDIA_URL, this.creds);
+    const form = new FormData();
+    form.append("media", new Blob([new Uint8Array(png)], { type: "image/png" }));
+    const res = await this.doFetch(MEDIA_URL, {
+      method: "POST",
+      headers: { authorization: auth }, // content-type is set by FormData, with its boundary
+      body: form as unknown as string // FetchLike takes the node fetch body union
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      media_id_string?: string;
+      errors?: Array<{ message?: string }>;
+    };
+    if (!res.ok || !body.media_id_string) {
+      throw new XApiError(body.errors?.[0]?.message ?? `x media upload ${res.status}`, res.status);
+    }
+    return body.media_id_string;
+  }
+
+  async post(text: string, _key: string, mediaIds?: string[]): Promise<{ id: string }> {
     const auth = oauth1Header("POST", POST_URL, this.creds);
+    const payload: Record<string, unknown> = { text };
+    if (mediaIds?.length) payload.media = { media_ids: mediaIds };
     const res = await this.doFetch(POST_URL, {
       method: "POST",
       headers: { authorization: auth, "content-type": "application/json" },
-      body: JSON.stringify({ text })
+      body: JSON.stringify(payload)
     });
     const body = (await res.json().catch(() => ({}))) as {
       data?: { id?: string };

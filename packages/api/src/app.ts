@@ -20,6 +20,7 @@ import {
   daysSinceLastApproval,
   formatWholeTokens,
   parseBase,
+  renderRulingCard,
   submitClaim,
   type Config,
   type DocketRow
@@ -344,6 +345,41 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
     }
   );
 
+  app.get("/card/:id.png", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const row = await db.row<{
+      docket_id: string;
+      verdict: string;
+      ruling_line: string;
+      fee_tokens: string;
+      amount_usd: number;
+      award_usd: number | null;
+    }>(
+      `SELECT r.docket_id, r.verdict, r.ruling_line, d.fee_tokens, p.amount_usd, r.award_usd
+       FROM rulings r JOIN dockets d ON d.id = r.docket_id JOIN proposals p ON p.id = d.proposal_id
+       WHERE r.docket_id = $1`,
+      [id]
+    );
+    if (!row) return reply.code(404).send({ error: "not_found" });
+
+    const burnFraction = runtime.constitution.limits.fee_split.burn;
+    const burnedBase = (parseBase(row.fee_tokens) * BigInt(Math.round(burnFraction * 100))) / 100n;
+    const png = renderRulingCard({
+      docketId: row.docket_id,
+      verdict: row.verdict,
+      rulingLine: row.ruling_line,
+      amountUsd: row.amount_usd,
+      awardUsd: row.award_usd,
+      burnedTokens: formatWholeTokens(burnedBase, cfg.TOKEN_DECIMALS),
+      siteHost: cfg.SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")
+    });
+    // A ruling never changes once issued, so this is safe to cache hard.
+    return reply
+      .type("image/png")
+      .header("cache-control", "public, max-age=604800, immutable")
+      .send(png);
+  });
+
   app.get("/r/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
     const row = await db.row<{
@@ -371,6 +407,10 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${esc(row.ruling_line)}">
   <meta property="og:type" content="article">
+  <meta property="og:image" content="${cfg.SITE_URL.replace(/\/$/, "")}/card/${encodeURIComponent(id)}.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="628">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/css/site.css">
   </head><body>
   <main class="wrap" style="padding-top:46px;">

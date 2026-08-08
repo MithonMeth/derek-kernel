@@ -2,6 +2,7 @@ import type { DB } from "./db.js";
 import { sanitizePublishedText } from "./guards.js";
 import { formatWholeTokens, parseBase } from "./amounts.js";
 import { recordXPost } from "./spend.js";
+import { renderRulingCard } from "./cards.js";
 import type { Logger } from "./logger.js";
 
 /**
@@ -11,9 +12,11 @@ import type { Logger } from "./logger.js";
  */
 export interface PostTransport {
   /** Post `text`; `key` is an idempotency key (the docket id). */
-  post(text: string, key: string): Promise<{ id: string }>;
+  post(text: string, key: string, mediaIds?: string[]): Promise<{ id: string }>;
   /** Look up a previous post by idempotency key, for reconciliation. */
   find(key: string): Promise<{ id: string } | null>;
+  /** Upload a PNG, returning its media id. Absent on transports without media. */
+  uploadMedia?(png: Buffer): Promise<string>;
 }
 
 interface PublishableRuling {
@@ -23,6 +26,38 @@ interface PublishableRuling {
   fee_tokens: string;
   amount_usd: number;
   award_usd: number | null;
+}
+
+/**
+ * Renders and uploads the ruling card. The post carries no URL, so this
+ * image is the only route back to the site — but a media failure must not
+ * cost the ruling its post, so this degrades to a text-only post rather
+ * than throwing.
+ */
+async function attachCard(
+  transport: PostTransport,
+  row: PublishableRuling,
+  opts: { siteUrl: string; tokenDecimals: number; burnFraction: number },
+  log?: Logger
+): Promise<string[] | undefined> {
+  if (!transport.uploadMedia) return undefined;
+  try {
+    const feeBase = parseBase(row.fee_tokens);
+    const burnedBase = (feeBase * BigInt(Math.round(opts.burnFraction * 100))) / 100n;
+    const png = renderRulingCard({
+      docketId: row.docket_id,
+      verdict: row.verdict,
+      rulingLine: row.ruling_line,
+      amountUsd: row.amount_usd,
+      awardUsd: row.award_usd,
+      burnedTokens: formatWholeTokens(burnedBase, opts.tokenDecimals),
+      siteHost: opts.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")
+    });
+    return [await transport.uploadMedia(png)];
+  } catch (e) {
+    log?.warn({ docket: row.docket_id, err: (e as Error).message }, "card failed; posting without it");
+    return undefined;
+  }
 }
 
 export function buildPostText(
@@ -88,8 +123,9 @@ export async function publishRuling(
   }
 
   const text = buildPostText(row, opts);
+  const mediaIds = await attachCard(transport, row, opts, log);
   try {
-    const posted = await transport.post(text, docketId);
+    const posted = await transport.post(text, docketId, mediaIds);
     await recordXPost(db);
     await db.run("UPDATE rulings SET post_status = 'posted', post_id = $1 WHERE docket_id = $2", [
       posted.id,
