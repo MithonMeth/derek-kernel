@@ -484,9 +484,15 @@ export class Runtime {
       setInterval(safely("watch", () => this.watchCycle()), 30_000),
       setInterval(safely("ruling", () => this.rulingCycle()), 60_000),
       setInterval(safely("publish", () => this.publishCycle()), 60_000),
-      // Slow on purpose: sweeping moves money, and there is no hurry.
-      setInterval(safely("sweep", async () => void (await this.sweepCycle())), 300_000)
     ];
+    if (this.cfg.SWEEP_AUTO) {
+      // Slow on purpose: sweeping moves money, and there is no hurry.
+      this.timers.push(
+        setInterval(safely("sweep", async () => void (await this.sweepCycle())), 300_000)
+      );
+    } else {
+      this.log.info("automatic sweeping is off; run `admin sweep --send` to move fees");
+    }
     for (const t of this.timers) t.unref();
     void this.oracle.poll().catch(() => undefined);
   }

@@ -41,6 +41,13 @@ const EnvSchema = z.object({
   MAX_SUBMISSIONS_PER_HOUR: num.pipe(z.number().int().positive()).default("400" as never),
   CLAIM_EXPIRY_DAYS: num.pipe(z.number().int().positive()).default("7" as never),
   AUTO_APPROVE_UNFLAGGED: bool.default("false" as never),
+  /**
+   * Off by default: sweeping is the only thing here that moves money, and
+   * it should not start doing so on a timer the moment a mint address
+   * appears. Until this is on, fees accumulate in their deposit addresses
+   * and `admin sweep --send` moves them when an operator decides to.
+   */
+  SWEEP_AUTO: bool.default("false" as never),
   PAUSED: bool.default("true" as never),
   TOKEN_DECIMALS: num.pipe(z.number().int().min(0).max(18)).default("9" as never),
   CHAIN_ID: z.string().default("solana"),

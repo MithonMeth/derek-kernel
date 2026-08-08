@@ -62,3 +62,12 @@ describe("sweep fee payer validation", () => {
     expect(log.error).toHaveBeenCalled();
   });
 });
+
+describe("automatic sweeping is opt-in", () => {
+  it("defaults off, so a mint address alone never starts moving money", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    expect(loadConfig({} as NodeJS.ProcessEnv).SWEEP_AUTO).toBe(false);
+    expect(loadConfig({ TOKEN_MINT_ADDRESS: "mint" } as NodeJS.ProcessEnv).SWEEP_AUTO).toBe(false);
+    expect(loadConfig({ SWEEP_AUTO: "true" } as NodeJS.ProcessEnv).SWEEP_AUTO).toBe(true);
+  });
+});
