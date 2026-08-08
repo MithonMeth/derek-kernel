@@ -55,6 +55,18 @@ export class SolanaSweepExecutor implements SweepExecutor {
 
   async execute(plan: SweepPlan, signingSeed: Buffer): Promise<string> {
     const owner = Keypair.fromSeed(signingSeed);
+    const tx = this.buildTransaction(plan, owner);
+    return sendAndConfirmTransaction(this.connection, tx, [this.feePayer, owner], {
+      commitment: "confirmed",
+      maxRetries: 3
+    });
+  }
+
+  /**
+   * Split out from execute() so the instruction list - which is the part
+   * that decides where money goes - can be asserted without a chain.
+   */
+  buildTransaction(plan: SweepPlan, owner: Keypair): Transaction {
     if (owner.publicKey.toBase58() !== plan.address) {
       // The advertised address and the signing key must be the same account.
       // If they ever diverge, stop rather than send into the void.
@@ -100,14 +112,19 @@ export class SolanaSweepExecutor implements SweepExecutor {
       );
     }
 
-    // The deposit account is finished with: closing it returns its rent
-    // deposit to airdrops instead of stranding it forever.
-    tx.add(createCloseAccountInstruction(source, this.airdrops, owner.publicKey));
+    // The deposit account is finished with. Closing it releases the ~0.002
+    // SOL of rent that was locked when the account was created, and that
+    // goes back to the fee payer rather than to airdrops.
+    //
+    // This is what makes sweeping self-funding. A sweep costs two
+    // signatures - on the order of 0.00001 SOL - and returns around 0.002,
+    // so the fee payer gains roughly 0.002 SOL per swept docket instead of
+    // draining and needing to be topped up by hand. The two destination
+    // token accounts are created once, out of the same wallet, and are
+    // no-ops on every sweep after the first.
+    tx.add(createCloseAccountInstruction(source, this.feePayer.publicKey, owner.publicKey));
 
     tx.feePayer = this.feePayer.publicKey;
-    return sendAndConfirmTransaction(this.connection, tx, [this.feePayer, owner], {
-      commitment: "confirmed",
-      maxRetries: 3
-    });
+    return tx;
   }
 }
