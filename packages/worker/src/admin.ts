@@ -7,7 +7,11 @@
  *   admin rule <proposals.json>  push proposals through the pipeline, no payment
  *   admin sweep [--send]         show what a sweep would move; --send actually moves it
  *   admin pause | unpause        flip intake without a redeploy
- *   admin approve <docket>       countersign a pending approval, mint claim code
+ *   admin approve <docket> [--price=<usd>] [--send]
+ *                                countersign a held approval and mint a claim
+ *                                code; --price locks the amount by hand before
+ *                                the token has a market
+ *   admin bonded                 check whether the market can price things yet
  *   admin claim-paid <code> <tx> record the multisig payout
  *   admin queue                  print manual-queue posts ready for X
  *   admin mark-posted <docket> <postId>
@@ -36,6 +40,7 @@ const runtime = await Runtime.create(
 );
 const db = runtime.db;
 const [, , command, arg1, arg2] = process.argv;
+const args = process.argv.slice(2);
 
 async function main(): Promise<void> {
   switch (command) {
@@ -78,18 +83,77 @@ async function main(): Promise<void> {
           `cycle ${rulingCycle} has already issued its approval; this one cannot be countersigned into it`
         );
       }
-      const price = runtime.oracle.current();
-      if (!price) throw new Error("no live price — cannot lock the token amount; try again when the oracle has a tick");
+      // A claim locks a token amount, which normally comes from the live
+      // price. Before a token has a market there is no price to lock
+      // against, so --price supplies one by hand. It is the same override
+      // in spirit as FAKE_TREASURY_USD and just as temporary.
+      const priceFlag = args.find((a) => a.startsWith("--price="));
+      const manualPrice = priceFlag ? Number(priceFlag.split("=")[1]) : null;
+      if (manualPrice !== null && !(Number.isFinite(manualPrice) && manualPrice > 0)) {
+        throw new Error(`--price must be a positive number, got ${priceFlag}`);
+      }
+      const priceUsd = manualPrice ?? runtime.oracle.current()?.priceUsd ?? null;
+      if (priceUsd === null) {
+        throw new Error(
+          "no live price — pass --price=<usd> to lock the amount by hand, " +
+            "e.g. admin approve " + arg1 + " --price=0.000002253 --send"
+        );
+      }
+
+      const whole = Math.round(ruling.award_usd / priceUsd);
+      console.log(`${arg1}  award $${ruling.award_usd}  at $${priceUsd}`);
+      console.log(`  -> ${whole.toLocaleString("en-US")} $DEREK`);
+      console.log(`  price source: ${manualPrice !== null ? "MANUAL (--price)" : "live oracle"}`);
+      if (!args.includes("--send")) {
+        // Same shape as sweep: money-moving commands do not fire on a typo.
+        console.log("\nDry run. No claim issued. Re-run with --send to issue it.");
+        break;
+      }
+
       const claim = await createClaim(
         db,
         arg1,
         ruling.award_usd,
-        price.priceUsd,
+        priceUsd,
         cfg.TOKEN_DECIMALS,
         cfg.CLAIM_EXPIRY_DAYS
       );
       await db.run("UPDATE rulings SET review_status = 'confirmed' WHERE docket_id = $1", [arg1]);
-      console.log(`countersigned ${arg1}; claim code: ${claim.code}`);
+      console.log(`\ncountersigned ${arg1}; claim code: ${claim.code}`);
+      console.log("Give this code to the submitter. Anyone holding it can name the payout wallet.");
+      break;
+    }
+    case "bonded": {
+      // Everything priced by hand right now - the flat fee, the stated
+      // treasury - exists because the token has no market. This reports
+      // whether that is still true, and refuses to pretend otherwise.
+      const price = runtime.oracle.current();
+      const floor = cfg.MIN_LIQUIDITY_USD;
+      console.log("fee mode:        " +
+        (cfg.FEE_FIXED_TOKENS !== undefined
+          ? `FLAT ${cfg.FEE_FIXED_TOKENS.toLocaleString("en-US")} $DEREK`
+          : `$${cfg.FEE_TARGET_USD} tracked against the price`));
+      console.log("treasury value:  " +
+        (cfg.FAKE_TREASURY_USD !== undefined ? `MANUAL $${cfg.FAKE_TREASURY_USD}` : "read from chain"));
+      console.log("live price:      " + (price ? `$${price.priceUsd}` : "none"));
+      console.log("liquidity floor: $" + floor.toLocaleString("en-US"));
+
+      if (!price) {
+        console.log("\nNot bonded: no fresh price. Nothing to change yet.");
+        break;
+      }
+      const tokens = await runtime.treasuryTokens();
+      if (tokens !== null) {
+        const usd = (Number(tokens) / 10 ** cfg.TOKEN_DECIMALS) * price.priceUsd;
+        console.log(`\nTreasury would value at $${usd.toFixed(2)} ` +
+          `(cap ${(runtime.constitution.limits.treasury_fraction_cap * 100).toFixed(0)}% = $${(usd * runtime.constitution.limits.treasury_fraction_cap).toFixed(2)})`);
+      }
+      if (cfg.FEE_TARGET_USD && price.priceUsd > 0) {
+        console.log(`A $${cfg.FEE_TARGET_USD} fee would be ` +
+          `${Math.round(cfg.FEE_TARGET_USD / price.priceUsd).toLocaleString("en-US")} $DEREK`);
+      }
+      console.log("\nIf that looks right, hand back to the market with:");
+      console.log("  heroku config:unset FEE_FIXED_TOKENS FAKE_TREASURY_USD -a smokingandalf");
       break;
     }
     case "claim-paid": {
