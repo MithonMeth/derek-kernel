@@ -318,6 +318,14 @@ body{
   font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--ink-soft);padding:18px 0 24px;
 }
+.ca__copy{
+  margin-top:8px;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--paper);
+  background:var(--ink);border:0;padding:7px 12px;cursor:pointer;
+}
+.ca__copy:hover{background:var(--oxblood);}
+.ca__copy:disabled{background:var(--stampblue);cursor:default;}
+
 .card{
   border-top:1px solid var(--rule);padding:18px 0 20px;position:relative;
 }

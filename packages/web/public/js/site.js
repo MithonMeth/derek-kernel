@@ -44,6 +44,44 @@
       // The token balance is a fact that holds with or without a price;
       // the dollar figure needs a market and, before a token graduates,
       // there is not one.
+      // The contract address comes from the same config the payment URIs are
+      // built from. Hardcoding it in the markup is how a site ends up
+      // advertising an address the server no longer uses.
+      if (s.mint) {
+        $("ca").textContent = s.mint;
+        var btn = $("ca-copy");
+        btn.hidden = false;
+        btn.addEventListener("click", function () {
+          var done = function () {
+            btn.textContent = "Copied";
+            btn.disabled = true;
+            setTimeout(function () {
+              btn.textContent = "Copy address";
+              btn.disabled = false;
+            }, 1600);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(s.mint).then(done, fallback);
+          } else {
+            fallback();
+          }
+          // execCommand is deprecated but is the only thing that works on
+          // an insecure origin or an older in-app browser, which is most of
+          // where a link from X gets opened.
+          function fallback() {
+            var t = document.createElement("textarea");
+            t.value = s.mint;
+            t.setAttribute("readonly", "");
+            t.style.position = "fixed";
+            t.style.opacity = "0";
+            document.body.appendChild(t);
+            t.select();
+            try { document.execCommand("copy"); done(); } catch (e) {}
+            document.body.removeChild(t);
+          }
+        });
+      }
+
       $("stat-treasury").textContent = s.treasuryTokens
         ? s.treasuryTokens + " $DEREK"
         : "—";

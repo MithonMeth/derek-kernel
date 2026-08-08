@@ -309,6 +309,7 @@ export async function buildApp(runtime: Runtime, cfg: Config) {
       approved,
       approvalRate: rulings ? Math.round((approved / rulings) * 1000) / 10 : 0,
       burned: formatWholeTokens(burnedBase, cfg.TOKEN_DECIMALS),
+      mint: cfg.TOKEN_MINT_ADDRESS ?? null,
       treasuryUsd: await runtime.treasuryUsd().catch(() => null),
       treasuryTokens,
       fee,
