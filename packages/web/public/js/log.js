@@ -118,7 +118,7 @@
     if (s.treasuryUsd === null) {
       $("d-cap").textContent = money(s.maxAward);
     } else {
-      var share = Math.floor((s.treasuryUsd * 0.05) / 1.28);
+      var share = Math.floor(s.treasuryUsd * 0.05);
       $("d-cap").textContent = money(Math.min(s.maxAward, share));
     }
 
